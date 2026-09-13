@@ -1,0 +1,40 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#161211">
+  <title>Jazz Club | Create account</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="icon" href="{% static 'icons/favicon-32.png' %}" sizes="32x32">
+  <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+</head>
+<body class="auth-shell">
+  <div class="auth-card">
+    <img class="brand-mark" src="{% static 'icons/icon-192.png' %}" alt="Jazz Club">
+    <h1>Create account</h1>
+    <p class="muted">Shared life admin for two people.</p>
+    {% if form.non_field_errors %}
+      <p class="muted">{{ form.non_field_errors }}</p>
+    {% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <label for="id_first_name">First name</label>
+      <input id="id_first_name" type="text" name="first_name" value="{{ form.first_name.value|default:'' }}" required>
+      {% if form.first_name.errors %}<p class="muted">{{ form.first_name.errors|striptags }}</p>{% endif %}
+
+      <label for="id_email">Email</label>
+      <input id="id_email" type="email" name="email" value="{{ form.email.value|default:'' }}" required>
+      {% if form.email.errors %}<p class="muted">{{ form.email.errors|striptags }}</p>{% endif %}
+
+      <label for="id_password">Password</label>
+      <input id="id_password" type="password" name="password" required>
+      {% if form.password.errors %}<p class="muted">{{ form.password.errors|striptags }}</p>{% endif %}
+
+      <button type="submit">Create account</button>
+    </form>
+    <p class="muted" style="margin-top: 14px;"><a href="{% url 'login' %}">Already have an account? Log in</a></p>
+  </div>
+</body>
+</html>

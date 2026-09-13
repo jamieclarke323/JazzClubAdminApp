@@ -2,7 +2,7 @@ import json
 from datetime import date, timedelta
 
 from django.contrib import messages
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
 from django.db.models import Case, IntegerField, Q, Value, When
 from django.http import JsonResponse
@@ -11,7 +11,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .forms import ShoppingForm
+from .forms import ShoppingForm, SignupForm
 from .models import Category, DateIdea, DinnerIdea, Household, ShoppingItem, SubTask, Task, UndoEntry, UserProfile
 
 User = get_user_model()
@@ -84,6 +84,28 @@ def home_redirect(request):
     return redirect('today')
 
 
+def signup_view(request):
+    if request.user.is_authenticated:
+        return redirect('today')
+
+    form = SignupForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        email = form.cleaned_data['email']
+        first_name = form.cleaned_data['first_name'].strip()
+        household, _ = Household.objects.get_or_create(name='Jazz Club')
+        used_colors = set(household.profiles.values_list('color', flat=True))
+        color = next((value for value, _ in UserProfile.COLOR_CHOICES if value not in used_colors), UserProfile.COLOR_CHOICES[0][0])
+
+        user = User.objects.create_user(username=email, email=email, first_name=first_name, password=form.cleaned_data['password'])
+        UserProfile.objects.create(user=user, household=household, name=first_name, color=color)
+
+        login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+        messages.success(request, f'Welcome, {first_name}!')
+        return redirect('today')
+
+    return render(request, 'registration/signup.html', {'form': form})
+
+
 @login_required
 def today_view(request):
     household = get_household_for_user(request.user)
@@ -129,6 +151,7 @@ def today_view(request):
         'date_idea': date_idea,
         'dinner_idea': dinner_idea,
         'today_label': today.strftime('%A %d %B'),
+        'profiles': household.profiles.select_related('user'),
     })
 
 
@@ -322,6 +345,20 @@ def task_claim(request, task_id):
     log_undo(household, 'Task', 'update', description, object_id=task.id, snapshot=previous)
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({'success': True, 'owner': request.user.username})
+    return redirect(request.POST.get('next') or 'today')
+
+
+@login_required
+@require_POST
+def task_set_owner(request, task_id):
+    household = get_household_for_user(request.user)
+    task = Task.objects.get(pk=task_id, household=household)
+    previous = {'owner_id': task.owner_id, 'owner_type': task.owner_type}
+    task.owner, task.owner_type = resolve_owner_choice(request.POST.get('owner', ''), household)
+    task.save(update_fields=['owner', 'owner_type', 'updated_at'])
+    log_undo(household, 'Task', 'update', f"Reassigned '{task.title}'", object_id=task.id, snapshot=previous)
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'owner': task.owner_value})
     return redirect(request.POST.get('next') or 'today')
 
 

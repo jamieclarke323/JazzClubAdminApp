@@ -4,6 +4,7 @@ from . import views
 
 urlpatterns = [
     path('', views.home_redirect, name='home'),
+    path('signup/', views.signup_view, name='signup'),
     path('today/', views.today_view, name='today'),
     path('tasks/', views.admin_view, name='tasks'),
     path('shopping/', views.shopping_view, name='shopping'),
@@ -13,6 +14,7 @@ urlpatterns = [
     path('tasks/<int:task_id>/update/', views.task_update, name='task_update'),
     path('tasks/<int:task_id>/toggle/', views.task_toggle, name='task_toggle'),
     path('tasks/<int:task_id>/claim/', views.task_claim, name='task_claim'),
+    path('tasks/<int:task_id>/set-owner/', views.task_set_owner, name='task_set_owner'),
     path('tasks/<int:task_id>/subtasks/create/', views.subtask_create, name='subtask_create'),
     path('subtasks/<int:subtask_id>/toggle/', views.subtask_toggle, name='subtask_toggle'),
     path('subtasks/<int:subtask_id>/delete/', views.subtask_delete, name='subtask_delete'),

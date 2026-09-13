@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Today | Jazz Club{% endblock %}
 {% block content %}
+<div class="page-center">
 <section class="page-header">
   <div>
     <p class="eyebrow">Today</p>
@@ -65,9 +66,9 @@
     {% if today_tasks %}
     <div class="stack task-rows">
       {% for task in today_tasks %}
-      <div class="task-row color-{{ task.owner_color }}">
+      <div class="task-row color-{{ task.owner_color }}" data-owner-switch>
         <span class="effort-dot {{ task.effort_theme }}" title="{{ task.effort }} effort"></span>
-        <div class="task-row-main">
+        <div class="task-row-main" data-owner-trigger title="Click to change owner">
           <div class="task-row-line1">
             <span class="task-title">{{ task.title }}</span>
             <span class="badge priority-{{ task.priority }}">{{ task.priority }}</span>
@@ -84,6 +85,16 @@
             <button type="submit" class="secondary-button small">Done</button>
           </form>
         </div>
+        <div class="owner-switch-panel" data-owner-panel hidden>
+          <form method="post" action="{% url 'task_set_owner' task.id %}" class="owner-switch-form">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{% url 'today' %}?view=todo">
+            {% for profile in profiles %}
+              <button type="submit" name="owner" value="user-{{ profile.user_id }}" class="toggle-btn">{{ profile.name }}</button>
+            {% endfor %}
+            <button type="submit" name="owner" value="either" class="toggle-btn">Both</button>
+          </form>
+        </div>
       </div>
       {% endfor %}
     </div>
@@ -91,6 +102,7 @@
       <p>No tasks claimed for today yet.</p>
     {% endif %}
   </section>
+
 
   <section class="panel">
     <h2>All other tasks</h2>
@@ -140,4 +152,5 @@
   {% endif %}
 </div>
 {% endif %}
+</div>
 {% endblock %}

@@ -68,3 +68,24 @@ document.addEventListener('toggle', function (event) {
   });
 }, true);
 
+// Today page: clicking a claimed task's card opens a popup to switch its owner.
+document.addEventListener('click', function (event) {
+  var trigger = event.target.closest('[data-owner-trigger]');
+  if (trigger) {
+    var row = trigger.closest('[data-owner-switch]');
+    var panel = row && row.querySelector('[data-owner-panel]');
+    if (!panel) return;
+    var wasHidden = panel.hasAttribute('hidden');
+    document.querySelectorAll('[data-owner-panel]').forEach(function (other) {
+      other.setAttribute('hidden', '');
+    });
+    if (wasHidden) panel.removeAttribute('hidden');
+    return;
+  }
+  if (!event.target.closest('[data-owner-panel]')) {
+    document.querySelectorAll('[data-owner-panel]').forEach(function (panel) {
+      panel.setAttribute('hidden', '');
+    });
+  }
+});
+

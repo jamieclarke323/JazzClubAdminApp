@@ -268,3 +268,54 @@ class JazzClubModelTests(TestCase):
         recently_checked_names = [entry.name for entry in today_response.context['recently_checked']]
         self.assertIn('Milk', recently_checked_names)
         self.assertNotIn('Old flour', recently_checked_names)
+
+    def test_task_set_owner_switches_to_other_user(self):
+        task = Task.objects.create(
+            household=self.household, title='Fix fence', owner=self.user1, owner_type='assigned',
+            due_date=date.today(), category=self.category,
+        )
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('task_set_owner', args=[task.id]), {'owner': f'user-{self.user2.id}'})
+        self.assertEqual(response.status_code, 302)
+        task.refresh_from_db()
+        self.assertEqual(task.owner, self.user2)
+        self.assertEqual(task.owner_type, 'assigned')
+
+    def test_task_set_owner_can_set_both(self):
+        task = Task.objects.create(
+            household=self.household, title='Fix fence', owner=self.user1, owner_type='assigned',
+            due_date=date.today(), category=self.category,
+        )
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('task_set_owner', args=[task.id]), {'owner': 'either'})
+        self.assertEqual(response.status_code, 302)
+        task.refresh_from_db()
+        self.assertIsNone(task.owner)
+        self.assertEqual(task.owner_type, 'either')
+
+    def test_signup_creates_user_and_profile_and_logs_in(self):
+        response = self.client.post(reverse('signup'), {
+            'email': 'newperson@example.com',
+            'first_name': 'Jordan',
+            'password': 'a-strong-password-1',
+        })
+        self.assertEqual(response.status_code, 302)
+        user = User.objects.get(email='newperson@example.com')
+        self.assertEqual(user.first_name, 'Jordan')
+        profile = UserProfile.objects.get(user=user)
+        self.assertEqual(profile.name, 'Jordan')
+        self.assertEqual(profile.household.name, 'Jazz Club')
+
+        response = self.client.get(reverse('today'))
+        self.assertEqual(response.status_code, 200)
+
+    def test_signup_rejects_duplicate_email(self):
+        response = self.client.post(reverse('signup'), {
+            'email': 'alex@example.com',
+            'first_name': 'Alex',
+            'password': 'a-strong-password-1',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(User.objects.filter(email='alex@example.com').count(), 1)
+        self.assertContains(response, 'already exists')
+
