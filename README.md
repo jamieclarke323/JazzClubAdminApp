@@ -35,42 +35,50 @@ A two-person household life admin app built with Django for a calm, mobile-first
 
 ## PythonAnywhere deployment
 
-1. Create a PythonAnywhere account and a new web app using Manual Configuration.
-2. In the Bash console, create a virtual environment and install dependencies:
+One-time setup:
+
+1. Create a PythonAnywhere account, then open a **Bash console** there.
+2. Clone the repo and create a virtual environment inside the project folder:
    ```bash
-   mkvirtualenv --python=/usr/local/bin/python3.11 jazzclub
-   pip install -r /home/<your-user>/<your-project>/requirements.txt
+   git clone https://github.com/jamieclarke323/JazzClubAdminApp.git
+   cd JazzClubAdminApp
+   python3.11 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
    ```
-3. Configure PostgreSQL and set environment variables in the web app configuration:
+3. Create a `.env` file in the project root (this stays only on the server; it's git-ignored so `git pull` never touches it):
    ```bash
-   DJANGO_SECRET_KEY=...
+   DJANGO_SECRET_KEY=<a-long-random-string>
    DEBUG=False
-   ALLOWED_HOSTS=<your-pythonanywhere-domain>,<your-username>.pythonanywhere.com
-   USE_POSTGRES=true
-   DB_NAME=...
-   DB_USER=...
-   DB_PASSWORD=...
-   DB_HOST=...
-   DB_PORT=5432
+   ALLOWED_HOSTS=<your-username>.pythonanywhere.com
    ```
-4. Run migrations on the server:
+4. Set up the database and static files:
    ```bash
    python manage.py migrate
    python manage.py create_household
-   ```
-5. Collect static files:
-   ```bash
+   python manage.py createsuperuser
    python manage.py collectstatic --noinput
    ```
-6. Configure the WSGI file to point to `jazzclub.wsgi.application`.
-7. Add scheduled tasks for recurring job processing if needed.
+5. Go to the **Web** tab → **Add a new web app** → **Manual configuration** → pick the same Python version as your venv.
+   - Set **Source code** to `/home/<your-username>/JazzClubAdminApp`.
+   - Set **Virtualenv** to `/home/<your-username>/JazzClubAdminApp/venv`.
+   - Edit the **WSGI configuration file** it links to so it points at `jazzclub.wsgi.application` (add the project path to `sys.path` and set `DJANGO_SETTINGS_MODULE=jazzclub.settings`, matching [jazzclub/wsgi.py](jazzclub/wsgi.py)).
+   - Under **Static files**, add a mapping: URL `/static/` → Directory `/home/<your-username>/JazzClubAdminApp/staticfiles`.
+6. Click **Reload** on the Web tab.
+
+Updating after a change / pull request merge — from a Bash console:
+```bash
+cd ~/JazzClubAdminApp
+git pull
+bash deploy.sh
+```
+Then click **Reload** on the Web tab (or run `touch /var/www/<your-username>_pythonanywhere_com_wsgi.py`) to pick up the change. `deploy.sh` re-installs any new dependencies and runs migrations + `collectstatic` for you.
 
 ## Production settings notes
 
-- Store secrets in environment variables.
-- Keep Google OAuth credentials and AI keys outside source control.
-- Use SQLite locally and PostgreSQL on PythonAnywhere.
-- Static files should be served via the web app collector.
+- Secrets and per-environment config (`DJANGO_SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`) live in a `.env` file loaded by `python-dotenv` (see [jazzclub/settings.py](jazzclub/settings.py)). `.env` is git-ignored, so it's set once per server and never touched by `git pull`.
+- `db.sqlite3`, `staticfiles/`, and `__pycache__/` are git-ignored — they're server-local/build artifacts, not source code, so `git pull` never overwrites production data.
+- Static files are served via the PythonAnywhere static files mapping after running `collectstatic`.
 
 ## Helpful management commands
 
