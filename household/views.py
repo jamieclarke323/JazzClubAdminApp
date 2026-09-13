@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import ShoppingForm, SignupForm
-from .models import Category, DateIdea, DinnerIdea, Household, ShoppingItem, SubTask, Task, UndoEntry, UserProfile
+from .models import Category, DateIdea, DinnerIdea, Household, ImportantInfo, ShoppingItem, SubTask, Task, UndoEntry, UserProfile
 
 User = get_user_model()
 
@@ -235,6 +235,54 @@ def settings_view(request):
         'profiles': profiles,
         'color_choices': UserProfile.COLOR_CHOICES,
     })
+
+
+@login_required
+def important_info_view(request):
+    household = get_household_for_user(request.user)
+    items = ImportantInfo.objects.filter(household=household).order_by('order', 'created_at')
+    return render(request, 'household/important_info.html', {'items': items})
+
+
+@login_required
+@require_POST
+def important_info_create(request):
+    household = get_household_for_user(request.user)
+    text = request.POST.get('text', '').strip()
+    if text:
+        next_order = ImportantInfo.objects.filter(household=household).count()
+        ImportantInfo.objects.create(household=household, text=text, order=next_order)
+    return redirect('important_info')
+
+
+@login_required
+@require_POST
+def important_info_delete(request, info_id):
+    household = get_household_for_user(request.user)
+    ImportantInfo.objects.filter(pk=info_id, household=household).delete()
+    return redirect('important_info')
+
+
+@login_required
+@require_POST
+def important_info_move(request, info_id):
+    household = get_household_for_user(request.user)
+    items = list(ImportantInfo.objects.filter(household=household).order_by('order', 'created_at'))
+    ids = [item.id for item in items]
+    if info_id not in ids:
+        return redirect('important_info')
+
+    index = ids.index(info_id)
+    direction = request.POST.get('direction')
+    swap_index = index - 1 if direction == 'up' else index + 1 if direction == 'down' else None
+
+    if swap_index is not None and 0 <= swap_index < len(items):
+        current, other = items[index], items[swap_index]
+        current.order, other.order = other.order, current.order
+        current.save(update_fields=['order'])
+        other.save(update_fields=['order'])
+
+    return redirect('important_info')
 
 
 @login_required

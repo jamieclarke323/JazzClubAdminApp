@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import Category, Household, ShoppingItem, Task, UserProfile
+from .models import Category, Household, ImportantInfo, ShoppingItem, Task, UserProfile
 
 User = get_user_model()
 
@@ -355,4 +355,31 @@ class JazzClubModelTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(User.objects.filter(email='alex@example.com').count(), 1)
         self.assertContains(response, 'already exists')
+
+    def test_important_info_create_adds_entry_with_incrementing_order(self):
+        self.client.login(username='alex', password='secret123')
+        self.client.post(reverse('important_info_create'), {'text': 'Wifi: hunter2'})
+        self.client.post(reverse('important_info_create'), {'text': 'Bins out on Tuesdays'})
+        items = list(ImportantInfo.objects.filter(household=self.household).order_by('order'))
+        self.assertEqual([item.text for item in items], ['Wifi: hunter2', 'Bins out on Tuesdays'])
+        self.assertEqual([item.order for item in items], [0, 1])
+
+    def test_important_info_move_swaps_order_with_neighbour(self):
+        first = ImportantInfo.objects.create(household=self.household, text='First', order=0)
+        second = ImportantInfo.objects.create(household=self.household, text='Second', order=1)
+
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('important_info_move', args=[second.id]), {'direction': 'up'})
+        self.assertEqual(response.status_code, 302)
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(second.order, 0)
+        self.assertEqual(first.order, 1)
+
+    def test_important_info_delete_removes_entry(self):
+        item = ImportantInfo.objects.create(household=self.household, text='Old note', order=0)
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('important_info_delete', args=[item.id]))
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(ImportantInfo.objects.filter(pk=item.id).exists())
 

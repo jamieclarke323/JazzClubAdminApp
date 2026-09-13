@@ -19,14 +19,14 @@
   --color-slate: #93a4b3;
   --color-neutral: #8f8880;
 
-  --tint-wisteria: rgba(166, 136, 194, 0.14);
-  --tint-sage: rgba(157, 192, 158, 0.14);
-  --tint-sky: rgba(141, 192, 230, 0.14);
-  --tint-peach: rgba(234, 178, 126, 0.14);
-  --tint-butter: rgba(230, 199, 106, 0.14);
-  --tint-coral: rgba(230, 144, 118, 0.14);
-  --tint-slate: rgba(147, 164, 179, 0.14);
-  --tint-neutral: rgba(143, 136, 128, 0.10);
+  --tint-wisteria: rgba(166, 136, 194, 0.9);
+  --tint-sage: rgba(157, 192, 158, 0.9);
+  --tint-sky: rgba(141, 192, 230, 0.9);
+  --tint-peach: rgba(234, 178, 126, 0.9);
+  --tint-butter: rgba(230, 199, 106, 0.9);
+  --tint-coral: rgba(230, 144, 118, 0.9);
+  --tint-slate: rgba(147, 164, 179, 0.9);
+  --tint-neutral: rgba(143, 136, 128, 0.9);
 
   --effort-high-bg: #3a1c17;
   --effort-high-line: #c8442a;
@@ -184,6 +184,10 @@ input::placeholder { color: var(--muted); }
 .mini-list { margin: 10px 0 0; padding-left: 18px; color: var(--ink); }
 .profile-row { display:flex; flex-direction: column; gap:10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .profile-row:last-child { border-bottom: none; }
+.info-list { margin-top: 16px; }
+.info-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.info-text { margin:0; white-space: pre-wrap; flex: 1 1 auto; }
+.info-actions { display:flex; gap:6px; flex-shrink:0; }
 .shopping-list { list-style:none; padding:0; margin:14px 0 0; display:grid; gap:10px; }
 .shopping-row { display:flex; align-items:center; gap:10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .shopping-row.checked span { text-decoration: line-through; opacity: .7; }
@@ -278,6 +282,11 @@ input::placeholder { color: var(--muted); }
 .today-page .owner-switch-form { justify-content: center; }
 .today-page .shopping-row { justify-content: center; }
 .today-page .shopping-form { justify-content: center; }
+
+/* The shopping view within the Today page stays left-aligned, unlike the centred to-do view */
+.today-page .shopping-view { text-align: left; }
+.today-page .shopping-view .shopping-row,
+.today-page .shopping-view .shopping-form { justify-content: flex-start; }
 
 .auth-shell {
   min-height:100vh; display:grid; place-items:center; background: radial-gradient(circle at top, #201a16, #0f0d0c);

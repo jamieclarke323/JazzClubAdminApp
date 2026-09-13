@@ -379,6 +379,19 @@ class UndoEntry(models.Model):
         return self.description
 
 
+class ImportantInfo(models.Model):
+    household = models.ForeignKey(Household, on_delete=models.CASCADE, related_name='important_info')
+    text = models.TextField()
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'created_at']
+
+    def __str__(self):
+        return self.text[:50]
+
+
 class Idea(models.Model):
     CATEGORY_CHOICES = [
         ('holiday', 'Holiday'),

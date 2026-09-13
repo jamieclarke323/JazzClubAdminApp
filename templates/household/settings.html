@@ -26,6 +26,11 @@
     <p>Google Calendar integration can be connected here.</p>
   </section>
   <section class="panel">
+    <h2>Important info</h2>
+    <p>Wifi passwords, allergy notes, and other free-text info to keep handy.</p>
+    <a href="{% url 'important_info' %}" class="secondary-button">Open important info</a>
+  </section>
+  <section class="panel">
     <h2>Settings</h2>
     <div class="stack">
       {% for profile in profiles %}
