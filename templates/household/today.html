@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Today | Jazz Club{% endblock %}
 {% block content %}
-<div class="page-center">
+<div class="today-page">
 <section class="page-header">
   <div>
     <p class="eyebrow">Today</p>
@@ -19,6 +19,13 @@
 <div class="stack">
   <section class="panel">
     <h2>Shopping list</h2>
+    <form method="post" action="{% url 'shopping_add' %}" class="shopping-form">
+      {% csrf_token %}
+      <input type="hidden" name="list_type" value="groceries">
+      <input type="hidden" name="next" value="{% url 'today' %}?view=shopping">
+      <input type="text" name="name" placeholder="Add an item" required>
+      <button type="submit" class="primary-button">Add</button>
+    </form>
     {% if shopping_items %}
       <ul class="shopping-list">
         {% for item in shopping_items %}

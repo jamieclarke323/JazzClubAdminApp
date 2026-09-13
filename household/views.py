@@ -430,7 +430,7 @@ def shopping_add(request):
     household = get_household_for_user(request.user)
     name = request.POST.get('name', '').strip()
     if not name:
-        return redirect('shopping')
+        return redirect(request.POST.get('next') or 'shopping')
     item = ShoppingItem.objects.create(
         household=household,
         name=name,
@@ -440,7 +440,7 @@ def shopping_add(request):
         added_by=request.user,
     )
     log_undo(household, 'ShoppingItem', 'create', f"Added shopping item '{item.name}'", object_id=item.id)
-    return redirect('shopping')
+    return redirect(request.POST.get('next') or 'shopping')
 
 
 @login_required

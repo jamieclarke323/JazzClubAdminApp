@@ -302,6 +302,16 @@ class JazzClubModelTests(TestCase):
         response = self.client.get(reverse('shopping'))
         self.assertEqual(response.status_code, 200)
 
+    def test_shopping_add_from_today_page_redirects_back_to_today(self):
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('shopping_add'), {
+            'name': 'Milk',
+            'list_type': 'groceries',
+            'next': '/today/?view=shopping',
+        })
+        self.assertRedirects(response, '/today/?view=shopping')
+        self.assertTrue(ShoppingItem.objects.filter(household=self.household, name='Milk').exists())
+
     def test_signup_creates_user_and_profile_and_logs_in(self):
         response = self.client.post(reverse('signup'), {
             'email': 'newperson@example.com',
