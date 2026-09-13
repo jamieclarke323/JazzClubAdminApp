@@ -237,6 +237,24 @@ class JazzClubModelTests(TestCase):
         self.assertEqual(list(response.context['today_tasks']), [])
         self.assertContains(response, 'No tasks claimed for today yet.')
 
+    def test_completing_a_today_task_moves_it_to_completed_section(self):
+        task = Task.objects.create(
+            household=self.household, title='Water plants', owner=self.user1, owner_type='assigned',
+            due_date=date.today(), category=self.category,
+        )
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('task_toggle', args=[task.id]))
+        self.assertEqual(response.status_code, 302)
+        task.refresh_from_db()
+        self.assertTrue(task.completed)
+
+        response = self.client.get(reverse('today'))
+        self.assertEqual(response.status_code, 200)
+        today_titles = [t.title for t in response.context['today_tasks']]
+        completed_titles = [t.title for t in response.context['completed_today_tasks']]
+        self.assertNotIn('Water plants', today_titles)
+        self.assertEqual(completed_titles, ['Water plants'])
+
     def test_claiming_a_task_for_today_promotes_it(self):
         task = Task.objects.create(
             household=self.household, title='Fix fence', priority='medium',

@@ -131,6 +131,11 @@ def today_view(request):
         .annotate(priority_rank=PRIORITY_ORDER)
         .order_by('priority_rank', '-created_at')
     )
+    completed_today_tasks = (
+        Task.objects.filter(household=household, completed=True, completed_at__date=today)
+        .select_related('owner', 'owner__household_profile', 'category')
+        .order_by('-completed_at')
+    )
 
     shopping_items = ShoppingItem.objects.filter(household=household, checked=False).order_by('section', 'name')
     recently_checked = ShoppingItem.objects.filter(
@@ -146,6 +151,7 @@ def today_view(request):
         'today': today,
         'today_tasks': today_tasks,
         'other_tasks': other_tasks,
+        'completed_today_tasks': completed_today_tasks,
         'shopping_items': shopping_items,
         'recently_checked': recently_checked,
         'date_idea': date_idea,

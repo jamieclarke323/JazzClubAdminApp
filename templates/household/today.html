@@ -159,6 +159,27 @@
     <p>{{ date_idea.title }}</p>
   </section>
   {% endif %}
+
+  {% if completed_today_tasks %}
+  <details class="completed-section">
+    <summary>Completed today ({{ completed_today_tasks|length }})</summary>
+    <div class="completed-list">
+      {% for task in completed_today_tasks %}
+      <div class="completed-row">
+        <form method="post" action="{% url 'task_toggle' task.id %}" class="completed-toggle">
+          {% csrf_token %}
+          <button type="submit" aria-label="Mark incomplete">✓</button>
+        </form>
+        <span class="completed-title">{{ task.title }}</span>
+        <span class="owner-chip color-{{ task.owner_color }}"><span class="owner-dot"></span>{{ task.owner_label }}</span>
+        <span class="badge priority-{{ task.priority }}">{{ task.priority }}</span>
+        <span class="effort-dot {{ task.effort_theme }}"></span>
+        <span class="completed-date">{{ task.completed_at|date:'d M' }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </details>
+  {% endif %}
 </div>
 {% endif %}
 </div>
