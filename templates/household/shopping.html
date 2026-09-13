@@ -19,8 +19,8 @@
     </form>
     <ul class="shopping-list">
       {% for item in groceries %}
-      <li class="shopping-row {% if item.checked %}checked{% endif %}">
-        <form method="post" action="{% url 'shopping_toggle' item.id %}">{% csrf_token %}<button type="submit">{% if item.checked %}✓{% else %}○{% endif %}</button></form>
+      <li class="shopping-row">
+        <form method="post" action="{% url 'shopping_toggle' item.id %}">{% csrf_token %}<button type="submit" class="check-toggle" aria-label="Mark {{ item.name }} as bought">✓</button></form>
         <span>{{ item.name }}</span>
         <form method="post" action="{% url 'shopping_delete' item.id %}">{% csrf_token %}<button type="submit" class="icon-button">×</button></form>
       </li>
@@ -38,8 +38,8 @@
     </form>
     <ul class="shopping-list">
       {% for item in other_items %}
-      <li class="shopping-row {% if item.checked %}checked{% endif %}">
-        <form method="post" action="{% url 'shopping_toggle' item.id %}">{% csrf_token %}<button type="submit">{% if item.checked %}✓{% else %}○{% endif %}</button></form>
+      <li class="shopping-row">
+        <form method="post" action="{% url 'shopping_toggle' item.id %}">{% csrf_token %}<button type="submit" class="check-toggle" aria-label="Mark {{ item.name }} as bought">✓</button></form>
         <span>{{ item.name }}</span>
         <form method="post" action="{% url 'shopping_delete' item.id %}">{% csrf_token %}<button type="submit" class="icon-button">×</button></form>
       </li>
@@ -48,14 +48,14 @@
   </section>
 </div>
 
-<div class="stack">
-  <section class="panel">
-    <h2>Ticked in the last 60 days</h2>
+<details class="completed-section">
+  <summary>Bought{% if recently_checked %} ({{ recently_checked|length }}){% endif %}</summary>
+  <div class="completed-list">
     {% if recently_checked %}
       <ul class="shopping-list">
         {% for item in recently_checked %}
         <li class="shopping-row checked">
-          <form method="post" action="{% url 'shopping_toggle' item.id %}">{% csrf_token %}<button type="submit">✓</button></form>
+          <form method="post" action="{% url 'shopping_toggle' item.id %}">{% csrf_token %}<button type="submit" class="check-toggle checked" aria-label="Mark {{ item.name }} as not bought">✓</button></form>
           <span>{{ item.name }}</span>
           <span class="muted">{{ item.checked_at|date:'d M' }}</span>
           <form method="post" action="{% url 'shopping_delete' item.id %}">{% csrf_token %}<button type="submit" class="icon-button">×</button></form>
@@ -63,8 +63,8 @@
         {% endfor %}
       </ul>
     {% else %}
-      <p>Nothing ticked off in the last 60 days.</p>
+      <p>Nothing bought in the last 60 days.</p>
     {% endif %}
-  </section>
-</div>
+  </div>
+</details>
 {% endblock %}
