@@ -1,5 +1,5 @@
 import json
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib import messages
 from django.contrib.auth import get_user_model
@@ -8,6 +8,7 @@ from django.db.models import Case, IntegerField, Q, Value, When
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import ShoppingForm
@@ -89,26 +90,42 @@ def today_view(request):
     if not household:
         return render(request, 'household/empty_state.html', {'title': 'No household yet'})
 
+    active_view = request.GET.get('view', 'todo')
     today = date.today()
-    tasks = Task.objects.filter(household=household, due_date=today, completed=False).select_related('owner', 'category')
-    tasks_by_owner = {}
-    for task in tasks:
-        label = 'Unassigned'
-        if task.owner and hasattr(task.owner, 'household_profile'):
-            label = task.owner.household_profile.name
-        elif task.owner_type == 'either':
-            label = 'Either'
-        tasks_by_owner.setdefault(label, []).append(task)
 
-    shopping_items = ShoppingItem.objects.filter(household=household).order_by('-checked', 'name')[:8]
+    today_tasks = (
+        Task.objects.filter(household=household, completed=False, due_date__lte=today)
+        .select_related('owner', 'owner__household_profile', 'category')
+        .prefetch_related('subtasks')
+        .annotate(priority_rank=PRIORITY_ORDER)
+        .order_by('priority_rank', '-created_at')
+    )
+    today_task_ids = list(today_tasks.values_list('id', flat=True))
+    other_tasks = (
+        Task.objects.filter(household=household, completed=False)
+        .exclude(id__in=today_task_ids)
+        .select_related('owner', 'owner__household_profile', 'category')
+        .prefetch_related('subtasks')
+        .annotate(priority_rank=PRIORITY_ORDER)
+        .order_by('priority_rank', '-created_at')
+    )
+
+    shopping_items = ShoppingItem.objects.filter(household=household, checked=False).order_by('section', 'name')
+    recently_checked = ShoppingItem.objects.filter(
+        household=household, checked=True, checked_at__gte=timezone.now() - timedelta(days=60),
+    ).order_by('-checked_at', 'name')
+
     date_idea = DateIdea.objects.filter(household=household).order_by('-created_at').first()
     dinner_idea = DinnerIdea.objects.filter(household=household).order_by('-created_at').first()
 
     return render(request, 'household/today.html', {
         'household': household,
-        'tasks': tasks,
-        'tasks_by_owner': tasks_by_owner,
+        'active_view': active_view,
+        'today': today,
+        'today_tasks': today_tasks,
+        'other_tasks': other_tasks,
         'shopping_items': shopping_items,
+        'recently_checked': recently_checked,
         'date_idea': date_idea,
         'dinner_idea': dinner_idea,
         'today_label': today.strftime('%A %d %B'),
@@ -166,12 +183,16 @@ def admin_view(request):
 @login_required
 def shopping_view(request):
     household = get_household_for_user(request.user)
-    groceries = ShoppingItem.objects.filter(household=household, list_type='groceries').order_by('section', 'name')
-    other = ShoppingItem.objects.filter(household=household, list_type='other').order_by('name')
+    groceries = ShoppingItem.objects.filter(household=household, list_type='groceries', checked=False).order_by('section', 'name')
+    other = ShoppingItem.objects.filter(household=household, list_type='other', checked=False).order_by('name')
+    recently_checked = ShoppingItem.objects.filter(
+        household=household, checked=True, checked_at__gte=timezone.now() - timedelta(days=60),
+    ).order_by('-checked_at', 'name')
     form = ShoppingForm()
     return render(request, 'household/shopping.html', {
         'groceries': groceries,
         'other_items': other,
+        'recently_checked': recently_checked,
         'form': form,
         'household': household,
     })
@@ -284,12 +305,24 @@ def task_toggle(request, task_id):
 def task_claim(request, task_id):
     household = get_household_for_user(request.user)
     task = Task.objects.get(pk=task_id, household=household)
-    previous = {'owner_id': task.owner_id, 'owner_type': task.owner_type, 'completed': task.completed}
-    task.claim_for_user(request.user)
-    log_undo(household, 'Task', 'update', f"Claimed '{task.title}'", object_id=task.id, snapshot=previous)
+    previous = {
+        'owner_id': task.owner_id,
+        'owner_type': task.owner_type,
+        'completed': task.completed,
+        'due_date': task.due_date,
+    }
+    task.owner = request.user
+    task.owner_type = 'assigned'
+    task.completed = False
+    claim_for_today = request.POST.get('for_today') == '1'
+    if claim_for_today:
+        task.due_date = date.today()
+    task.save(update_fields=['owner', 'owner_type', 'completed', 'due_date', 'updated_at'])
+    description = f"Claimed '{task.title}' for today" if claim_for_today else f"Claimed '{task.title}'"
+    log_undo(household, 'Task', 'update', description, object_id=task.id, snapshot=previous)
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({'success': True, 'owner': request.user.username})
-    return redirect('tasks')
+    return redirect(request.POST.get('next') or 'today')
 
 
 @login_required
@@ -378,13 +411,12 @@ def shopping_add(request):
 def shopping_toggle(request, item_id):
     household = get_household_for_user(request.user)
     item = ShoppingItem.objects.get(pk=item_id, household=household)
-    previous = {'checked': item.checked}
-    item.checked = not item.checked
-    item.save(update_fields=['checked'])
+    previous = {'checked': item.checked, 'checked_at': item.checked_at}
+    item.mark_checked(not item.checked)
     log_undo(household, 'ShoppingItem', 'update', f"Toggled '{item.name}'", object_id=item.id, snapshot=previous)
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({'success': True, 'checked': item.checked})
-    return redirect('shopping')
+    return redirect(request.POST.get('next') or 'shopping')
 
 
 @login_required

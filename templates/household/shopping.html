@@ -48,4 +48,25 @@
     </ul>
   </section>
 </div>
+
+<div class="stack">
+  <section class="panel">
+    <h2>Ticked in the last 60 days</h2>
+    {% if recently_checked %}
+      <ul class="shopping-list">
+        {% for item in recently_checked %}
+        <li class="shopping-row checked">
+          <form method="post" action="{% url 'shopping_toggle' item.id %}">{% csrf_token %}<button type="submit">✓</button></form>
+          <span>{{ item.name }}</span>
+          <span class="muted">{{ item.checked_at|date:'d M' }}</span>
+          <form method="post" action="{% url 'shopping_delete' item.id %}">{% csrf_token %}<button type="submit" class="icon-button">×</button></form>
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>Nothing ticked off in the last 60 days.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}
 {% endblock %}

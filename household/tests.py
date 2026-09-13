@@ -1,8 +1,9 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from .models import Category, Household, ShoppingItem, Task, UserProfile
 
@@ -203,3 +204,67 @@ class JazzClubModelTests(TestCase):
         self.profile2.refresh_from_db()
         self.assertEqual(self.profile1.color, 'sage')
         self.assertEqual(self.profile2.color, 'sky')
+
+    def test_today_view_shows_today_and_overdue_tasks(self):
+        overdue = Task.objects.create(
+            household=self.household, title='Overdue task', owner=self.user1, owner_type='assigned',
+            due_date=date.today() - timedelta(days=2), category=self.category,
+        )
+        due_today = Task.objects.create(
+            household=self.household, title='Due today task', owner=self.user1, owner_type='assigned',
+            due_date=date.today(), category=self.category,
+        )
+        future = Task.objects.create(
+            household=self.household, title='Future task', priority='low',
+            due_date=date.today() + timedelta(days=3), category=self.category,
+        )
+        unassigned = Task.objects.create(
+            household=self.household, title='Unassigned high priority', priority='high', category=self.category,
+        )
+
+        self.client.login(username='alex', password='secret123')
+        response = self.client.get(reverse('today'))
+        self.assertEqual(response.status_code, 200)
+        today_titles = {task.title for task in response.context['today_tasks']}
+        other_titles = [task.title for task in response.context['other_tasks']]
+        self.assertEqual(today_titles, {'Overdue task', 'Due today task'})
+        self.assertEqual(other_titles, ['Unassigned high priority', 'Future task'])
+
+    def test_today_view_says_when_nothing_claimed_for_today(self):
+        self.client.login(username='alex', password='secret123')
+        response = self.client.get(reverse('today'))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(list(response.context['today_tasks']), [])
+        self.assertContains(response, 'No tasks claimed for today yet.')
+
+    def test_claiming_a_task_for_today_promotes_it(self):
+        task = Task.objects.create(
+            household=self.household, title='Fix fence', priority='medium',
+            due_date=date.today() + timedelta(days=5), category=self.category,
+        )
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('task_claim', args=[task.id]), {'for_today': '1'})
+        self.assertEqual(response.status_code, 302)
+        task.refresh_from_db()
+        self.assertEqual(task.owner, self.user1)
+        self.assertEqual(task.owner_type, 'assigned')
+        self.assertEqual(task.due_date, date.today())
+
+    def test_shopping_toggle_records_checked_at_and_shows_in_history(self):
+        item = ShoppingItem.objects.create(household=self.household, name='Milk', list_type='groceries', added_by=self.user1)
+        old_item = ShoppingItem.objects.create(
+            household=self.household, name='Old flour', list_type='groceries', added_by=self.user1,
+            checked=True, checked_at=timezone.now() - timedelta(days=90),
+        )
+
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('shopping_toggle', args=[item.id]))
+        self.assertEqual(response.status_code, 302)
+        item.refresh_from_db()
+        self.assertTrue(item.checked)
+        self.assertIsNotNone(item.checked_at)
+
+        today_response = self.client.get(reverse('today'), {'view': 'shopping'})
+        recently_checked_names = [entry.name for entry in today_response.context['recently_checked']]
+        self.assertIn('Milk', recently_checked_names)
+        self.assertNotIn('Old flour', recently_checked_names)

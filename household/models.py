@@ -232,6 +232,7 @@ class ShoppingItem(models.Model):
     section = models.CharField(max_length=80, blank=True)
     note = models.CharField(max_length=260, blank=True)
     checked = models.BooleanField(default=False)
+    checked_at = models.DateTimeField(null=True, blank=True)
     added_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -241,6 +242,11 @@ class ShoppingItem(models.Model):
 
     def __str__(self):
         return self.name
+
+    def mark_checked(self, checked):
+        self.checked = checked
+        self.checked_at = timezone.now() if checked else None
+        self.save(update_fields=['checked', 'checked_at'])
 
 
 class DateIdea(models.Model):
