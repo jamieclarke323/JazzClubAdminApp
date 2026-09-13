@@ -144,7 +144,7 @@ class Task(models.Model):
     @property
     def owner_label(self):
         if self.owner_type == 'either':
-            return 'Either'
+            return 'Both'
         profile = self.owner_profile
         return profile.name if profile else 'Unassigned'
 
@@ -198,7 +198,7 @@ class SubTask(models.Model):
     @property
     def owner_label(self):
         if self.owner_type == 'either':
-            return 'Either'
+            return 'Both'
         profile = self.owner_profile
         return profile.name if profile else 'Unassigned'
 

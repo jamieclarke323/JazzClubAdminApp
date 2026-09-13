@@ -293,6 +293,15 @@ class JazzClubModelTests(TestCase):
         self.assertIsNone(task.owner)
         self.assertEqual(task.owner_type, 'either')
 
+    def test_owner_label_shows_both_for_either_owner_type(self):
+        task = Task.objects.create(household=self.household, title='Shared chore', owner_type='either', category=self.category)
+        self.assertEqual(task.owner_label, 'Both')
+
+    def test_shopping_page_renders(self):
+        self.client.login(username='alex', password='secret123')
+        response = self.client.get(reverse('shopping'))
+        self.assertEqual(response.status_code, 200)
+
     def test_signup_creates_user_and_profile_and_logs_in(self):
         response = self.client.post(reverse('signup'), {
             'email': 'newperson@example.com',
