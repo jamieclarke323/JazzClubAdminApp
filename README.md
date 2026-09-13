@@ -46,12 +46,15 @@ One-time setup:
    source venv/bin/activate
    pip install -r requirements.txt
    ```
-3. Create a `.env` file in the project root (this stays only on the server; it's git-ignored so `git pull` never touches it):
+3. Create a `.env` file in the project root (this stays only on the server; it's git-ignored so `git pull` never touches it). Don't paste the variables straight into bash — write them into the file, e.g. with a heredoc:
    ```bash
-   DJANGO_SECRET_KEY=<a-long-random-string>
+   cat > .env << EOF
+   DJANGO_SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(50))")
    DEBUG=False
    ALLOWED_HOSTS=<your-username>.pythonanywhere.com
+   EOF
    ```
+   This generates a real random secret key automatically. Replace `<your-username>` with your actual PythonAnywhere username. You can check the result with `cat .env`.
 4. Set up the database and static files:
    ```bash
    python manage.py migrate
