@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Today | Jazz Club{% endblock %}
+{% block content %}
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Today</p>
+    <h1>{{ today_label }}</h1>
+  </div>
+  <a href="{% url 'tasks' %}" class="primary-button">+ Add task</a>
+</section>
+
+<div class="stack">
+  {% if tasks_by_owner %}
+  <section class="panel">
+    <h2>Admin</h2>
+    {% for owner, owner_tasks in tasks_by_owner.items %}
+      <div class="task-group">
+        <h3>{{ owner }} — {{ owner_tasks|length }}</h3>
+        <ul class="mini-list">
+          {% for task in owner_tasks %}
+            <li>{{ task.title }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  <section class="panel">
+    <h2>Shopping</h2>
+    {% if shopping_items %}
+      <p>{{ shopping_items|length }} items</p>
+      <p class="inline-tags">
+        {% for item in shopping_items %}{{ item.name }}{% if not forloop.last %} · {% endif %}{% endfor %}
+      </p>
+    {% else %}
+      <p>No shopping items yet.</p>
+    {% endif %}
+    <a href="{% url 'shopping' %}" class="secondary-button">Open shopping list</a>
+  </section>
+
+  {% if dinner_idea %}
+  <section class="panel">
+    <h2>Dinner</h2>
+    <p>{{ dinner_idea.title }}</p>
+  </section>
+  {% endif %}
+
+  {% if date_idea %}
+  <section class="panel">
+    <h2>Us</h2>
+    <p>{{ date_idea.title }}</p>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

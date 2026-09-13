@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}More | Jazz Club{% endblock %}
+{% block content %}
+<section class="page-header compact">
+  <div>
+    <p class="eyebrow">More</p>
+    <h1>Shared life</h1>
+  </div>
+</section>
+
+<div class="stack">
+  <section class="panel">
+    <h2>Us</h2>
+    <p>Shared date ideas and dinner ideas will appear here.</p>
+  </section>
+  <section class="panel">
+    <h2>Ideas</h2>
+    <p>Holiday, recipe, and inspiration ideas will appear here.</p>
+  </section>
+  <section class="panel">
+    <h2>Watch</h2>
+    <p>Film and TV picks will appear here.</p>
+  </section>
+  <section class="panel">
+    <h2>Calendar</h2>
+    <p>Google Calendar integration can be connected here.</p>
+  </section>
+  <section class="panel">
+    <h2>Settings</h2>
+    <div class="stack">
+      {% for profile in profiles %}
+        <div class="profile-row">
+          <span class="owner-chip color-{{ profile.color }}"><span class="owner-dot"></span>{{ profile.name }}</span>
+          {% if profile.user_id == request.user.id %}
+            <form method="post" action="{% url 'update_color' %}" class="button-group">
+              {% csrf_token %}
+              {% for value, label in color_choices %}
+                <button type="submit" name="color" value="{{ value }}" class="toggle-btn{% if profile.color == value %} selected{% endif %}">{{ label }}</button>
+              {% endfor %}
+            </form>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endblock %}

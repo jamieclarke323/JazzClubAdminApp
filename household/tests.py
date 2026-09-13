@@ -1,0 +1,205 @@
+from datetime import date
+
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.urls import reverse
+
+from .models import Category, Household, ShoppingItem, Task, UserProfile
+
+User = get_user_model()
+
+
+class JazzClubModelTests(TestCase):
+    def setUp(self):
+        self.household = Household.objects.create(name='The House')
+        self.user1 = User.objects.create_user(username='alex', email='alex@example.com', password='secret123')
+        self.user2 = User.objects.create_user(username='sam', email='sam@example.com', password='secret123')
+        self.profile1 = UserProfile.objects.create(user=self.user1, household=self.household, name='Alex', color='wisteria')
+        self.profile2 = UserProfile.objects.create(user=self.user2, household=self.household, name='Sam', color='sky')
+        self.category = Category.objects.create(household=self.household, name='Home')
+
+    def test_login_required_redirects(self):
+        response = self.client.get(reverse('today'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/login/', response.url)
+
+    def test_task_creation_and_defaults(self):
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('task_create'), {'title': 'Book car MOT'})
+        self.assertEqual(response.status_code, 302)
+        task = Task.objects.get(title='Book car MOT')
+        self.assertEqual(task.household, self.household)
+        self.assertEqual(task.owner_type, 'unassigned')
+        self.assertIsNone(task.owner)
+        self.assertEqual(task.priority, 'medium')
+        self.assertEqual(task.effort, 'medium')
+        self.assertIsNone(task.category)
+
+    def test_task_creation_with_category_and_notes(self):
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('task_create'), {
+            'title': 'Book dentist',
+            'category_name': 'Health',
+            'notes': 'Ask about referral',
+        })
+        self.assertEqual(response.status_code, 302)
+        task = Task.objects.get(title='Book dentist')
+        self.assertEqual(task.category.name, 'Health')
+        self.assertEqual(task.notes, 'Ask about referral')
+
+    def test_ill_do_it_assigns_task_to_current_user(self):
+        task = Task.objects.create(
+            household=self.household,
+            title='Return parcel',
+            owner_type='either',
+            due_date=date.today(),
+            category=self.category,
+        )
+        task.claim_for_user(self.user1)
+        self.assertEqual(task.owner, self.user1)
+        self.assertEqual(task.owner_type, 'assigned')
+
+    def test_shopping_item_added_to_household(self):
+        item = ShoppingItem.objects.create(
+            household=self.household,
+            list_type='groceries',
+            section='Fridge',
+            name='Milk',
+            added_by=self.user1,
+        )
+        self.assertTrue(ShoppingItem.objects.filter(pk=item.pk).exists())
+        self.assertEqual(item.household, self.household)
+
+    def test_today_warning_for_over_three_tasks(self):
+        for i in range(4):
+            Task.objects.create(
+                household=self.household,
+                title=f'Task {i}',
+                owner=self.user1,
+                owner_type='assigned',
+                due_date=date.today(),
+                category=self.category,
+            )
+        self.assertGreater(Task.objects.filter(household=self.household, owner=self.user1, due_date=date.today()).count(), 3)
+
+    def test_task_creation_with_explicit_owner_priority_effort(self):
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('task_create'), {
+            'title': 'Book car MOT',
+            'priority': 'high',
+            'effort': 'low',
+            'owner': f'user-{self.user2.id}',
+        })
+        self.assertEqual(response.status_code, 302)
+        task = Task.objects.get(title='Book car MOT')
+        self.assertEqual(task.priority, 'high')
+        self.assertEqual(task.effort, 'low')
+        self.assertEqual(task.owner, self.user2)
+        self.assertEqual(task.owner_type, 'assigned')
+        self.assertEqual(task.owner_color, 'sky')
+
+    def test_admin_tasks_ordered_by_priority_not_date(self):
+        low = Task.objects.create(household=self.household, title='Low task', priority='low', category=self.category)
+        high = Task.objects.create(household=self.household, title='High task', priority='high', category=self.category)
+        medium = Task.objects.create(household=self.household, title='Medium task', priority='medium', category=self.category)
+
+        self.client.login(username='alex', password='secret123')
+        response = self.client.get(reverse('tasks'))
+        self.assertEqual(response.status_code, 200)
+        titles = [task.title for task in response.context['tasks']]
+        self.assertEqual(titles, ['High task', 'Medium task', 'Low task'])
+
+    def test_task_effort_theme_mapping(self):
+        high_effort = Task.objects.create(household=self.household, title='Hard task', effort='high', category=self.category)
+        medium_effort = Task.objects.create(household=self.household, title='Medium task', effort='medium', category=self.category)
+        low_effort = Task.objects.create(household=self.household, title='Easy task', effort='low', category=self.category)
+        self.assertEqual(high_effort.effort_theme, 'effort-high')
+        self.assertEqual(medium_effort.effort_theme, 'effort-medium')
+        self.assertEqual(low_effort.effort_theme, 'effort-low')
+
+    def test_completed_tasks_are_separated_from_active_tasks(self):
+        active = Task.objects.create(household=self.household, title='Active task', category=self.category)
+        done = Task.objects.create(household=self.household, title='Done task', category=self.category, completed=True)
+
+        self.client.login(username='alex', password='secret123')
+        response = self.client.get(reverse('tasks'))
+        self.assertEqual(response.status_code, 200)
+        active_titles = [task.title for task in response.context['tasks']]
+        completed_titles = [task.title for task in response.context['completed_tasks']]
+        self.assertEqual(active_titles, ['Active task'])
+        self.assertEqual(completed_titles, ['Done task'])
+
+    def test_task_update_changes_title_priority_effort_and_owner(self):
+        task = Task.objects.create(household=self.household, title='Old title', priority='low', effort='low', category=self.category)
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('task_update', args=[task.id]), {
+            'title': 'New title',
+            'priority': 'high',
+            'effort': 'high',
+            'owner': f'user-{self.user2.id}',
+            'category_name': self.category.name,
+        })
+        self.assertEqual(response.status_code, 302)
+        task.refresh_from_db()
+        self.assertEqual(task.title, 'New title')
+        self.assertEqual(task.priority, 'high')
+        self.assertEqual(task.effort, 'high')
+        self.assertEqual(task.owner, self.user2)
+        self.assertEqual(task.owner_type, 'assigned')
+
+    def test_task_update_can_change_category_and_notes(self):
+        task = Task.objects.create(household=self.household, title='Trip planning', category=self.category)
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('task_update', args=[task.id]), {
+            'title': 'Trip planning',
+            'priority': 'medium',
+            'effort': 'medium',
+            'owner': '',
+            'category_name': 'Travel',
+            'notes': 'Check passport expiry',
+        })
+        self.assertEqual(response.status_code, 302)
+        task.refresh_from_db()
+        self.assertEqual(task.category.name, 'Travel')
+        self.assertEqual(task.notes, 'Check passport expiry')
+
+    def test_task_update_can_remove_category(self):
+        task = Task.objects.create(household=self.household, title='Has category', category=self.category)
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('task_update', args=[task.id]), {
+            'title': 'Has category',
+            'priority': 'medium',
+            'effort': 'medium',
+            'owner': '',
+            'category_name': '',
+        })
+        self.assertEqual(response.status_code, 302)
+        task.refresh_from_db()
+        self.assertIsNone(task.category)
+
+    def test_task_update_can_remove_owner(self):
+        task = Task.objects.create(
+            household=self.household, title='Assigned task', category=self.category,
+            owner=self.user1, owner_type='assigned',
+        )
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('task_update', args=[task.id]), {
+            'title': 'Assigned task',
+            'priority': 'medium',
+            'effort': 'medium',
+            'owner': '',
+            'category_name': self.category.name,
+        })
+        self.assertEqual(response.status_code, 302)
+        task.refresh_from_db()
+        self.assertIsNone(task.owner)
+        self.assertEqual(task.owner_type, 'unassigned')
+
+    def test_update_color_changes_own_profile_only(self):
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('update_color'), {'color': 'sage'})
+        self.assertEqual(response.status_code, 302)
+        self.profile1.refresh_from_db()
+        self.profile2.refresh_from_db()
+        self.assertEqual(self.profile1.color, 'sage')
+        self.assertEqual(self.profile2.color, 'sky')

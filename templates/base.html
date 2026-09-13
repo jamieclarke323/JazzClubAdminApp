@@ -1,0 +1,57 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#161211">
+  <title>{% block title %}Jazz Club{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="manifest" href="{% static 'manifest.json' %}">
+  <link rel="icon" href="{% static 'icons/favicon-32.png' %}" sizes="32x32">
+  <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="mobile-topbar">
+      <button type="button" class="hamburger-btn" id="navToggle" aria-label="Open menu" aria-expanded="false" aria-controls="mobileNav">
+        <span></span><span></span><span></span>
+      </button>
+      <span class="mobile-topbar-brand">
+        <img src="{% static 'icons/icon-192.png' %}" alt="">
+        Jazz Club
+      </span>
+    </header>
+    <div class="nav-backdrop" id="navBackdrop"></div>
+    <aside class="sidebar" id="mobileNav">
+      <div class="brand-row">
+        <img class="brand-mark" src="{% static 'icons/icon-192.png' %}" alt="Jazz Club">
+        <div>
+          <strong>Jazz Club</strong>
+        </div>
+      </div>
+      <nav class="nav">
+        <a href="{% url 'today' %}" class="nav-link">Today</a>
+        <a href="{% url 'tasks' %}" class="nav-link">Admin</a>
+        <a href="{% url 'shopping' %}" class="nav-link">Shopping</a>
+        <a href="{% url 'settings' %}" class="nav-link">More</a>
+      </nav>
+      <div class="sidebar-footer">
+        {% if undo_count %}
+        <form method="post" action="{% url 'undo_action' %}" class="undo-form">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button type="submit" class="ghost-button" title="{{ undo_description }}">↶ Undo{% if undo_count > 1 %} ({{ undo_count }}){% endif %}</button>
+        </form>
+        {% endif %}
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button type="submit" class="ghost-button">Log out</button></form>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  <script src="{% static 'js/app.js' %}"></script>
+</body>
+</html>

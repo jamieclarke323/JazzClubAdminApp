@@ -1,0 +1,27 @@
+{% comment %}
+Reusable effort/owner fields for a sub-task (no priority/category/notes).
+Expects: id_prefix, effort, owner_value, owner_user_id, profiles
+{% endcomment %}
+<div class="field-row">
+  <span class="field-label">Effort</span>
+  <div class="button-group">
+    <input type="radio" id="subtask-effort-low-{{ id_prefix }}" name="effort" value="low" class="visually-hidden" {% if effort == 'low' %}checked{% endif %}>
+    <label for="subtask-effort-low-{{ id_prefix }}">Low</label>
+    <input type="radio" id="subtask-effort-medium-{{ id_prefix }}" name="effort" value="medium" class="visually-hidden" {% if effort == 'medium' %}checked{% endif %}>
+    <label for="subtask-effort-medium-{{ id_prefix }}">Med</label>
+    <input type="radio" id="subtask-effort-high-{{ id_prefix }}" name="effort" value="high" class="visually-hidden" {% if effort == 'high' %}checked{% endif %}>
+    <label for="subtask-effort-high-{{ id_prefix }}">High</label>
+  </div>
+</div>
+
+<div class="field-row">
+  <span class="field-label">Owner</span>
+  <div class="owner-picker" data-toggle-group>
+    <input type="hidden" name="owner" value="{{ owner_value }}">
+    {% for profile in profiles %}
+      <button type="button" class="toggle-btn{% if profile.user_id == owner_user_id %} selected{% endif %}" data-toggle-value="user-{{ profile.user_id }}">{{ profile.name }}</button>
+    {% endfor %}
+    <button type="button" class="toggle-btn{% if owner_value == 'either' %} selected{% endif %}" data-toggle-value="either">Both</button>
+  </div>
+</div>
+

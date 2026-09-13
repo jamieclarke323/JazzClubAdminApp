@@ -1,0 +1,51 @@
+{% comment %}
+Reusable priority/effort/owner/category/notes fields.
+Expects: id_prefix, priority, effort, owner_value, owner_user_id, profiles, categories, category_name, notes
+{% endcomment %}
+<div class="field-row">
+  <span class="field-label">Priority</span>
+  <div class="button-group">
+    <input type="radio" id="priority-low-{{ id_prefix }}" name="priority" value="low" class="visually-hidden" {% if priority == 'low' %}checked{% endif %}>
+    <label for="priority-low-{{ id_prefix }}">Low</label>
+    <input type="radio" id="priority-medium-{{ id_prefix }}" name="priority" value="medium" class="visually-hidden" {% if priority == 'medium' %}checked{% endif %}>
+    <label for="priority-medium-{{ id_prefix }}">Med</label>
+    <input type="radio" id="priority-high-{{ id_prefix }}" name="priority" value="high" class="visually-hidden" {% if priority == 'high' %}checked{% endif %}>
+    <label for="priority-high-{{ id_prefix }}">High</label>
+  </div>
+</div>
+
+<div class="field-row">
+  <span class="field-label">Effort</span>
+  <div class="button-group">
+    <input type="radio" id="effort-low-{{ id_prefix }}" name="effort" value="low" class="visually-hidden" {% if effort == 'low' %}checked{% endif %}>
+    <label for="effort-low-{{ id_prefix }}">Low</label>
+    <input type="radio" id="effort-medium-{{ id_prefix }}" name="effort" value="medium" class="visually-hidden" {% if effort == 'medium' %}checked{% endif %}>
+    <label for="effort-medium-{{ id_prefix }}">Med</label>
+    <input type="radio" id="effort-high-{{ id_prefix }}" name="effort" value="high" class="visually-hidden" {% if effort == 'high' %}checked{% endif %}>
+    <label for="effort-high-{{ id_prefix }}">High</label>
+  </div>
+</div>
+
+<div class="field-row">
+  <span class="field-label">Owner</span>
+  <div class="owner-picker" data-toggle-group>
+    <input type="hidden" name="owner" value="{{ owner_value }}">
+    {% for profile in profiles %}
+      <button type="button" class="toggle-btn{% if profile.user_id == owner_user_id %} selected{% endif %}" data-toggle-value="user-{{ profile.user_id }}">{{ profile.name }}</button>
+    {% endfor %}
+    <button type="button" class="toggle-btn{% if owner_value == 'either' %} selected{% endif %}" data-toggle-value="either">Both</button>
+  </div>
+</div>
+
+<div class="field-row">
+  <span class="field-label">Category</span>
+  <input type="text" name="category_name" list="category-options-{{ id_prefix }}" value="{{ category_name }}" placeholder="Optional" autocomplete="off">
+  <datalist id="category-options-{{ id_prefix }}">
+    {% for category in categories %}<option value="{{ category.name }}">{% endfor %}
+  </datalist>
+</div>
+
+<div class="field-row notes-row">
+  <span class="field-label">Notes</span>
+  <textarea name="notes" rows="2" placeholder="Optional notes">{{ notes }}</textarea>
+</div>

@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block title %}Shopping | Jazz Club{% endblock %}
+{% block content %}
+<section class="page-header compact">
+  <div>
+    <p class="eyebrow">Shopping</p>
+    <h1>Shared lists</h1>
+  </div>
+</section>
+
+<div class="stack two-col">
+  <section class="panel">
+    <h2>Groceries</h2>
+    <form method="post" action="{% url 'shopping_add' %}" class="shopping-form">
+      {% csrf_token %}
+      <input type="hidden" name="list_type" value="groceries">
+      <input type="text" name="name" placeholder="Milk" required>
+      <input type="text" name="section" placeholder="Fridge">
+      <button type="submit" class="primary-button">Add</button>
+    </form>
+    <ul class="shopping-list">
+      {% for item in groceries %}
+      <li class="shopping-row {% if item.checked %}checked{% endif %}">
+        <form method="post" action="{% url 'shopping_toggle' item.id %}">{% csrf_token %}<button type="submit">{% if item.checked %}✓{% else %}○{% endif %}</button></form>
+        <span>{{ item.name }}</span>
+        <form method="post" action="{% url 'shopping_delete' item.id %}">{% csrf_token %}<button type="submit" class="icon-button">×</button></form>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Other shopping</h2>
+    <form method="post" action="{% url 'shopping_add' %}" class="shopping-form">
+      {% csrf_token %}
+      <input type="hidden" name="list_type" value="other">
+      <input type="text" name="name" placeholder="Air fryer" required>
+      <button type="submit" class="primary-button">Add</button>
+    </form>
+    <ul class="shopping-list">
+      {% for item in other_items %}
+      <li class="shopping-row {% if item.checked %}checked{% endif %}">
+        <form method="post" action="{% url 'shopping_toggle' item.id %}">{% csrf_token %}<button type="submit">{% if item.checked %}✓{% else %}○{% endif %}</button></form>
+        <span>{{ item.name }}</span>
+        <form method="post" action="{% url 'shopping_delete' item.id %}">{% csrf_token %}<button type="submit" class="icon-button">×</button></form>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

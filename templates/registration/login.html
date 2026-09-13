@@ -1,0 +1,28 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#161211">
+  <title>Jazz Club | Login</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="icon" href="{% static 'icons/favicon-32.png' %}" sizes="32x32">
+  <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+</head>
+<body class="auth-shell">
+  <div class="auth-card">
+    <img class="brand-mark" src="{% static 'icons/icon-192.png' %}" alt="Jazz Club">
+    <h1>Jazz Club</h1>
+    <p class="muted">Shared life admin for two people.</p>
+    <form method="post">
+      {% csrf_token %}
+      <label for="id_username">Username</label>
+      <input id="id_username" type="text" name="username" required>
+      <label for="id_password">Password</label>
+      <input id="id_password" type="password" name="password" required>
+      <button type="submit">Log in</button>
+    </form>
+  </div>
+</body>
+</html>

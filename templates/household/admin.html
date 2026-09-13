@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% block title %}Admin | Jazz Club{% endblock %}
+{% block content %}
+<section class="page-header compact">
+  <div>
+    <p class="eyebrow">Admin</p>
+    <h1>Household tasks</h1>
+  </div>
+  <details class="task-create-toggle">
+    <summary class="primary-button">+ Add task</summary>
+    <div class="task-create-panel">
+      <form method="post" action="{% url 'task_create' %}" class="task-create-form">
+        {% csrf_token %}
+        <input type="text" name="title" placeholder="Task name" aria-label="Task title" required>
+        {% include 'household/_task_form_fields.html' with id_prefix='new' priority='medium' effort='medium' owner_value='' owner_user_id=None profiles=profiles categories=categories category_name='' notes='' %}
+        <button type="submit" class="primary-button">Create task</button>
+      </form>
+    </div>
+  </details>
+</section>
+
+<div class="filter-bar">
+  <a href="{% url 'tasks' %}?owner=all" class="chip {% if owner_filter == 'all' %}active{% endif %}">All</a>
+  <a href="{% url 'tasks' %}?owner=me" class="chip {% if owner_filter == 'me' %}active{% endif %}">Me</a>
+  <a href="{% url 'tasks' %}?owner=partner" class="chip {% if owner_filter == 'partner' %}active{% endif %}">Partner</a>
+  <a href="{% url 'tasks' %}?owner=unassigned" class="chip {% if owner_filter == 'unassigned' %}active{% endif %}">Unassigned</a>
+</div>
+
+<div class="stack task-rows">
+  {% for task in tasks %}
+  <div class="task-row color-{{ task.owner_color }}">
+    <span class="effort-dot {{ task.effort_theme }}" title="{{ task.effort }} effort"></span>
+    <div class="task-row-main">
+      <div class="task-row-line1">
+        <span class="task-title">{{ task.title }}</span>
+        <span class="badge priority-{{ task.priority }}">{{ task.priority }}</span>
+        {% if task.subtasks.exists %}
+        <span class="subtask-progress" style="--percent: {{ task.progress.percent }};" title="{{ task.progress.done }} of {{ task.progress.total }} sub-tasks complete">
+          <span class="subtask-donut"></span>
+          <span class="subtask-progress-text">{{ task.progress.done }}/{{ task.progress.total }}</span>
+        </span>
+        {% endif %}
+      </div>
+      <div class="task-row-line2">
+        <span class="owner-chip color-{{ task.owner_color }}"><span class="owner-dot"></span>{{ task.owner_label }}</span>
+        {% if task.category %}<span class="task-tag">{{ task.category.name }}</span>{% endif %}
+        {% if task.notes %}<span class="task-tag" title="{{ task.notes }}">📝 Notes</span>{% endif %}
+      </div>
+    </div>
+    <div class="task-row-actions">
+      {% if task.owner_type == 'either' or task.owner_type == 'unassigned' %}
+        <form method="post" action="{% url 'task_claim' task.id %}">
+          {% csrf_token %}
+          <button type="submit" class="secondary-button small">I'll do it</button>
+        </form>
+      {% endif %}
+      <form method="post" action="{% url 'task_toggle' task.id %}">
+        {% csrf_token %}
+        <button type="submit" class="ghost-button small" aria-label="{% if task.completed %}Mark incomplete{% else %}Mark complete{% endif %}">{% if task.completed %}↺{% else %}✓{% endif %}</button>
+      </form>
+      <details class="task-options subtask-options" {% if task.id == open_subtasks_id %}open{% endif %}>
+        <summary aria-label="Sub-tasks">÷</summary>
+        <div class="subtask-panel-content">
+          <div class="subtask-list">
+            {% for subtask in task.subtasks.all %}
+            <div class="subtask-row">
+              <form method="post" action="{% url 'subtask_toggle' subtask.id %}">
+                {% csrf_token %}
+                <button type="submit" class="ghost-button small" aria-label="{% if subtask.completed %}Mark incomplete{% else %}Mark complete{% endif %}">{% if subtask.completed %}↺{% else %}✓{% endif %}</button>
+              </form>
+              <span class="subtask-title{% if subtask.completed %} done{% endif %}">{{ subtask.title }}</span>
+              <span class="effort-dot {{ subtask.effort_theme }}" title="{{ subtask.effort }} effort"></span>
+              <span class="owner-chip color-{{ subtask.owner_color }}"><span class="owner-dot"></span>{{ subtask.owner_label }}</span>
+              <form method="post" action="{% url 'subtask_delete' subtask.id %}">
+                {% csrf_token %}
+                <button type="submit" class="icon-button" aria-label="Delete sub-task">🗑</button>
+              </form>
+            </div>
+            {% empty %}
+            <p class="muted subtask-empty">No sub-tasks yet.</p>
+            {% endfor %}
+          </div>
+          <form method="post" action="{% url 'subtask_create' task.id %}" class="subtask-create-form">
+            {% csrf_token %}
+            <input type="text" name="title" placeholder="Sub-task name" required>
+            {% include 'household/_subtask_form_fields.html' with id_prefix=task.id effort='medium' owner_value='' owner_user_id=None profiles=profiles %}
+            <button type="submit" class="secondary-button small">Add sub-task</button>
+          </form>
+        </div>
+      </details>
+      <details class="task-options">
+        <summary aria-label="Task options">⋯</summary>
+        <form method="post" action="{% url 'task_update' task.id %}" class="task-edit-form">
+          {% csrf_token %}
+          <input type="text" name="title" value="{{ task.title }}" required>
+          {% include 'household/_task_form_fields.html' with id_prefix=task.id priority=task.priority effort=task.effort owner_value=task.owner_value owner_user_id=task.owner_id profiles=profiles categories=categories category_name=task.category.name notes=task.notes %}
+          <button type="submit" class="secondary-button">Save changes</button>
+        </form>
+      </details>
+    </div>
+  </div>
+  {% empty %}
+  <div class="panel empty-panel">No tasks yet.</div>
+  {% endfor %}
+</div>
+
+{% if completed_tasks %}
+<details class="completed-section">
+  <summary>Completed tasks ({{ completed_tasks|length }})</summary>
+  <div class="completed-list">
+    {% for task in completed_tasks %}
+    <div class="completed-row">
+      <form method="post" action="{% url 'task_toggle' task.id %}" class="completed-toggle">
+        {% csrf_token %}
+        <button type="submit" aria-label="Mark incomplete">✓</button>
+      </form>
+      <span class="completed-title">{{ task.title }}</span>
+      <span class="owner-chip color-{{ task.owner_color }}"><span class="owner-dot"></span>{{ task.owner_label }}</span>
+      <span class="badge priority-{{ task.priority }}">{{ task.priority }}</span>
+      <span class="effort-dot {{ task.effort_theme }}"></span>
+      <span class="completed-date">{{ task.completed_at|date:'d M' }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</details>
+{% endif %}
+{% endblock %}
