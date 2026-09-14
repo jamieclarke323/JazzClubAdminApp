@@ -17,15 +17,22 @@
       <input type="text" name="name" placeholder="Milk" required>
       <button type="submit" class="primary-button">Add</button>
     </form>
-    <ul class="shopping-list">
+    <div class="stack task-rows">
       {% for item in groceries %}
-      <li class="shopping-row">
-        <form method="post" action="{% url 'shopping_toggle' item.id %}">{% csrf_token %}<button type="submit" class="check-toggle" aria-label="Mark {{ item.name }} as bought">✓</button></form>
-        <span>{{ item.name }}</span>
-        <form method="post" action="{% url 'shopping_delete' item.id %}">{% csrf_token %}<button type="submit" class="icon-button">×</button></form>
-      </li>
+      <div class="task-row color-{{ item.row_color }}">
+        <div class="task-row-main">
+          <div class="task-row-line1">
+            <span class="task-title">{{ item.name }}</span>
+            {% if item.section %}<span class="task-tag">{{ item.section }}</span>{% endif %}
+          </div>
+        </div>
+        <div class="task-row-actions">
+          <form method="post" action="{% url 'shopping_toggle' item.id %}">{% csrf_token %}<button type="submit" class="check-toggle" aria-label="Mark {{ item.name }} as bought">✓</button></form>
+          <form method="post" action="{% url 'shopping_delete' item.id %}">{% csrf_token %}<button type="submit" class="icon-button">×</button></form>
+        </div>
+      </div>
       {% endfor %}
-    </ul>
+    </div>
   </section>
 
   <section class="panel">
@@ -36,15 +43,21 @@
       <input type="text" name="name" placeholder="Air fryer" required>
       <button type="submit" class="primary-button">Add</button>
     </form>
-    <ul class="shopping-list">
+    <div class="stack task-rows">
       {% for item in other_items %}
-      <li class="shopping-row">
-        <form method="post" action="{% url 'shopping_toggle' item.id %}">{% csrf_token %}<button type="submit" class="check-toggle" aria-label="Mark {{ item.name }} as bought">✓</button></form>
-        <span>{{ item.name }}</span>
-        <form method="post" action="{% url 'shopping_delete' item.id %}">{% csrf_token %}<button type="submit" class="icon-button">×</button></form>
-      </li>
+      <div class="task-row color-{{ item.row_color }}">
+        <div class="task-row-main">
+          <div class="task-row-line1">
+            <span class="task-title">{{ item.name }}</span>
+          </div>
+        </div>
+        <div class="task-row-actions">
+          <form method="post" action="{% url 'shopping_toggle' item.id %}">{% csrf_token %}<button type="submit" class="check-toggle" aria-label="Mark {{ item.name }} as bought">✓</button></form>
+          <form method="post" action="{% url 'shopping_delete' item.id %}">{% csrf_token %}<button type="submit" class="icon-button">×</button></form>
+        </div>
+      </div>
       {% endfor %}
-    </ul>
+    </div>
   </section>
 </div>
 
@@ -52,16 +65,22 @@
   <summary>Bought{% if recently_checked %} ({{ recently_checked|length }}){% endif %}</summary>
   <div class="completed-list">
     {% if recently_checked %}
-      <ul class="shopping-list">
+      <div class="stack task-rows">
         {% for item in recently_checked %}
-        <li class="shopping-row checked">
-          <form method="post" action="{% url 'shopping_toggle' item.id %}">{% csrf_token %}<button type="submit" class="check-toggle checked" aria-label="Mark {{ item.name }} as not bought">✓</button></form>
-          <span>{{ item.name }}</span>
-          <span class="muted">{{ item.checked_at|date:'d M' }}</span>
-          <form method="post" action="{% url 'shopping_delete' item.id %}">{% csrf_token %}<button type="submit" class="icon-button">×</button></form>
-        </li>
+        <div class="task-row color-{{ item.row_color }} checked-item">
+          <div class="task-row-main">
+            <div class="task-row-line1">
+              <span class="task-title">{{ item.name }}</span>
+              <span class="muted">{{ item.checked_at|date:'d M' }}</span>
+            </div>
+          </div>
+          <div class="task-row-actions">
+            <form method="post" action="{% url 'shopping_toggle' item.id %}">{% csrf_token %}<button type="submit" class="check-toggle checked" aria-label="Mark {{ item.name }} as not bought">✓</button></form>
+            <form method="post" action="{% url 'shopping_delete' item.id %}">{% csrf_token %}<button type="submit" class="icon-button">×</button></form>
+          </div>
+        </div>
         {% endfor %}
-      </ul>
+      </div>
     {% else %}
       <p>Nothing bought in the last 60 days.</p>
     {% endif %}

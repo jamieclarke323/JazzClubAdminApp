@@ -12,6 +12,7 @@ urlpatterns = [
     path('settings/color/', views.update_color, name='update_color'),
     path('ideas/<str:kind>/', views.idea_list_view, name='idea_list'),
     path('ideas/<str:kind>/create/', views.idea_create, name='idea_create'),
+    path('ideas/<str:kind>/<int:item_id>/toggle/', views.idea_toggle, name='idea_toggle'),
     path('ideas/<str:kind>/<int:item_id>/delete/', views.idea_delete, name='idea_delete'),
     path('ideas/<str:kind>/categories/create/', views.category_create, name='category_create'),
     path('ideas/<str:kind>/categories/<int:category_id>/update/', views.category_update, name='category_update'),

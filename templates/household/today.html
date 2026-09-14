@@ -27,18 +27,30 @@
       <button type="submit" class="primary-button">Add</button>
     </form>
     {% if shopping_items %}
-      <ul class="shopping-list">
+      <div class="stack task-rows">
         {% for item in shopping_items %}
-        <li class="shopping-row">
-          <form method="post" action="{% url 'shopping_toggle' item.id %}">
-            {% csrf_token %}
-            <input type="hidden" name="next" value="{% url 'today' %}?view=shopping">
-            <button type="submit" class="check-toggle" aria-label="Mark {{ item.name }} as bought">✓</button>
-          </form>
-          <span>{{ item.name }}</span>
-        </li>
+        <div class="task-row color-{{ item.row_color }}">
+          <div class="task-row-main">
+            <div class="task-row-line1">
+              <span class="task-title">{{ item.name }}</span>
+              {% if item.section %}<span class="task-tag">{{ item.section }}</span>{% endif %}
+            </div>
+          </div>
+          <div class="task-row-actions">
+            <form method="post" action="{% url 'shopping_toggle' item.id %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{% url 'today' %}?view=shopping">
+              <button type="submit" class="check-toggle" aria-label="Mark {{ item.name }} as bought">✓</button>
+            </form>
+            <form method="post" action="{% url 'shopping_delete' item.id %}">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{% url 'today' %}?view=shopping">
+              <button type="submit" class="icon-button" aria-label="Delete">×</button>
+            </form>
+          </div>
+        </div>
         {% endfor %}
-      </ul>
+      </div>
     {% else %}
       <p>No shopping items yet.</p>
     {% endif %}
@@ -49,19 +61,30 @@
     <summary>Bought{% if recently_checked %} ({{ recently_checked|length }}){% endif %}</summary>
     <div class="completed-list">
       {% if recently_checked %}
-        <ul class="shopping-list">
+        <div class="stack task-rows">
           {% for item in recently_checked %}
-          <li class="shopping-row checked">
-            <form method="post" action="{% url 'shopping_toggle' item.id %}">
-              {% csrf_token %}
-              <input type="hidden" name="next" value="{% url 'today' %}?view=shopping">
-              <button type="submit" class="check-toggle checked" aria-label="Mark {{ item.name }} as not bought">✓</button>
-            </form>
-            <span>{{ item.name }}</span>
-            <span class="muted">{{ item.checked_at|date:'d M' }}</span>
-          </li>
+          <div class="task-row color-{{ item.row_color }} checked-item">
+            <div class="task-row-main">
+              <div class="task-row-line1">
+                <span class="task-title">{{ item.name }}</span>
+                <span class="muted">{{ item.checked_at|date:'d M' }}</span>
+              </div>
+            </div>
+            <div class="task-row-actions">
+              <form method="post" action="{% url 'shopping_toggle' item.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'today' %}?view=shopping">
+                <button type="submit" class="check-toggle checked" aria-label="Mark {{ item.name }} as not bought">✓</button>
+              </form>
+              <form method="post" action="{% url 'shopping_delete' item.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'today' %}?view=shopping">
+                <button type="submit" class="icon-button" aria-label="Delete">×</button>
+              </form>
+            </div>
+          </div>
           {% endfor %}
-        </ul>
+        </div>
       {% else %}
         <p>Nothing bought in the last 60 days.</p>
       {% endif %}
@@ -115,23 +138,35 @@
   <details class="completed-section">
     <summary>All other tasks ({{ other_tasks|length }})</summary>
     <div class="completed-list">
-      {% for task in other_tasks %}
-      <div class="thin-row">
-        <span class="effort-dot effort-{{ task.effort }}" title="{{ task.effort }} effort"></span>
-        <span class="thin-title">{{ task.title }}</span>
-        <span class="owner-chip color-{{ task.owner_color }}"><span class="owner-dot"></span>{{ task.owner_label }}</span>
-        <span class="badge priority-{{ task.priority }}">{{ task.priority }}</span>
-        {% if task.category %}<span class="task-tag">{{ task.category.name }}</span>{% endif %}
-        <form method="post" action="{% url 'task_claim' task.id %}" class="thin-claim">
-          {% csrf_token %}
-          <input type="hidden" name="for_today" value="1">
-          <input type="hidden" name="next" value="{% url 'today' %}?view=todo">
-          <button type="submit" aria-label="Claim for today">→</button>
-        </form>
+      {% if other_tasks %}
+      <div class="stack task-rows">
+        {% for task in other_tasks %}
+        <div class="task-row color-{{ task.owner_color }}">
+          <span class="effort-dot effort-{{ task.effort }}" title="{{ task.effort }} effort"></span>
+          <div class="task-row-main">
+            <div class="task-row-line1">
+              <span class="task-title">{{ task.title }}</span>
+              <span class="badge priority-{{ task.priority }}">{{ task.priority }}</span>
+            </div>
+            <div class="task-row-line2">
+              <span class="owner-chip color-{{ task.owner_color }}"><span class="owner-dot"></span>{{ task.owner_label }}</span>
+              {% if task.category %}<span class="task-tag">{{ task.category.name }}</span>{% endif %}
+            </div>
+          </div>
+          <div class="task-row-actions">
+            <form method="post" action="{% url 'task_claim' task.id %}">
+              {% csrf_token %}
+              <input type="hidden" name="for_today" value="1">
+              <input type="hidden" name="next" value="{% url 'today' %}?view=todo">
+              <button type="submit" class="primary-button small">Claim for today</button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
       </div>
-      {% empty %}
-      <p>Nothing else to claim right now.</p>
-      {% endfor %}
+      {% else %}
+        <p>Nothing else to claim right now.</p>
+      {% endif %}
     </div>
   </details>
 

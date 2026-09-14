@@ -260,12 +260,14 @@ def idea_list_view(request, kind):
         raise Http404
 
     household = get_household_for_user(request.user)
-    items = IdeaEntry.objects.filter(household=household, kind=kind).select_related('category')
+    base_items = IdeaEntry.objects.filter(household=household, kind=kind).select_related('category')
 
     sort_key = request.GET.get('sort', 'created_at')
     direction = request.GET.get('dir', 'desc' if sort_key == 'created_at' else 'asc')
     order_field = IDEA_SORT_FIELDS.get(sort_key, 'created_at')
-    items = items.order_by(order_field if direction == 'asc' else f'-{order_field}')
+
+    active_items = base_items.filter(completed=False).order_by(order_field if direction == 'asc' else f'-{order_field}')
+    completed_items = base_items.filter(completed=True).order_by('-created_at')
 
     categories = Category.objects.filter(household=household, kind=kind)
     column_count = 3 + (1 if meta['show_effort'] else 0) + (1 if meta['show_recommended_by'] else 0)
@@ -276,7 +278,8 @@ def idea_list_view(request, kind):
         'page_title': meta['label'],
         'show_effort': meta['show_effort'],
         'show_recommended_by': meta['show_recommended_by'],
-        'items': items,
+        'items': active_items,
+        'completed_items': completed_items,
         'categories': categories,
         'current_sort': sort_key,
         'current_dir': direction,
@@ -315,6 +318,18 @@ def idea_create(request, kind):
         recommended_by=recommended_by if meta['show_recommended_by'] else '',
     )
     log_undo(household, 'IdeaEntry', 'create', f"Added '{item.title}'", object_id=item.id)
+    return redirect('idea_list', kind=kind)
+
+
+@login_required
+@require_POST
+def idea_toggle(request, kind, item_id):
+    if kind not in IDEA_KIND_META:
+        raise Http404
+    household = get_household_for_user(request.user)
+    item = IdeaEntry.objects.get(pk=item_id, household=household, kind=kind)
+    item.completed = not item.completed
+    item.save(update_fields=['completed'])
     return redirect('idea_list', kind=kind)
 
 
@@ -620,7 +635,7 @@ def shopping_delete(request, item_id):
     description = f"Deleted shopping item '{item.name}'"
     item.delete()
     log_undo(household, 'ShoppingItem', 'delete', description, snapshot=snapshot)
-    return redirect('shopping')
+    return redirect(request.POST.get('next') or 'shopping')
 
 
 @login_required

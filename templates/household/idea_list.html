@@ -59,7 +59,7 @@
     </thead>
     <tbody>
       {% for item in items %}
-      <tr class="idea-row" data-idea-toggle data-target="idea-detail-{{ item.id }}">
+      <tr class="idea-row color-{{ item.row_color }}" data-idea-toggle data-target="idea-detail-{{ item.id }}">
         <td>{{ item.title }}</td>
         <td>{% if item.category %}<span class="category-pill">{{ item.category.name }}</span>{% else %}—{% endif %}</td>
         {% if show_effort %}
@@ -69,6 +69,10 @@
         <td>{{ item.recommended_by|default:'—' }}</td>
         {% endif %}
         <td>
+          <form method="post" action="{% url 'idea_toggle' kind=kind item_id=item.id %}">
+            {% csrf_token %}
+            <button type="submit" class="ghost-button small" aria-label="Mark complete">✓</button>
+          </form>
           <form method="post" action="{% url 'idea_delete' kind=kind item_id=item.id %}">
             {% csrf_token %}
             <button type="submit" class="icon-button" aria-label="Delete">×</button>
@@ -87,4 +91,28 @@
     </tbody>
   </table>
 </div>
+
+{% if completed_items %}
+<details class="completed-section">
+  <summary>Completed ({{ completed_items|length }})</summary>
+  <div class="completed-list">
+    {% for item in completed_items %}
+    <div class="completed-row">
+      <form method="post" action="{% url 'idea_toggle' kind=kind item_id=item.id %}" class="completed-toggle">
+        {% csrf_token %}
+        <button type="submit" aria-label="Mark incomplete">✓</button>
+      </form>
+      <span class="completed-title">{{ item.title }}</span>
+      {% if item.category %}<span class="category-pill">{{ item.category.name }}</span>{% endif %}
+      {% if show_effort %}<span class="effort-dot effort-{{ item.effort|default:'medium' }}"></span>{% endif %}
+      {% if show_recommended_by and item.recommended_by %}<span class="task-tag">{{ item.recommended_by }}</span>{% endif %}
+      <form method="post" action="{% url 'idea_delete' kind=kind item_id=item.id %}">
+        {% csrf_token %}
+        <button type="submit" class="icon-button" aria-label="Delete">×</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+</details>
+{% endif %}
 {% endblock %}

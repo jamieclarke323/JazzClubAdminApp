@@ -7,6 +7,16 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.utils import timezone
 
+ROW_COLOR_PALETTE = ['wisteria', 'sage', 'sky', 'peach', 'butter', 'coral', 'slate']
+
+
+def pick_row_color(key):
+    """Deterministically map a free-text key (category/section name) to a card colour."""
+    if not key:
+        return 'neutral'
+    checksum = sum(ord(ch) for ch in key)
+    return ROW_COLOR_PALETTE[checksum % len(ROW_COLOR_PALETTE)]
+
 
 class Household(models.Model):
     name = models.CharField(max_length=120, default='Shared home')
@@ -249,6 +259,10 @@ class ShoppingItem(models.Model):
         self.checked_at = timezone.now() if checked else None
         self.save(update_fields=['checked', 'checked_at'])
 
+    @property
+    def row_color(self):
+        return pick_row_color(self.section or self.list_type)
+
 
 class DateIdea(models.Model):
     STATUS_CHOICES = [
@@ -396,6 +410,7 @@ class IdeaEntry(models.Model):
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='idea_entries')
     effort = models.CharField(max_length=20, choices=Task.EFFORT_CHOICES, blank=True)
     recommended_by = models.CharField(max_length=120, blank=True)
+    completed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -404,6 +419,10 @@ class IdeaEntry(models.Model):
 
     def __str__(self):
         return self.title
+
+    @property
+    def row_color(self):
+        return pick_row_color(self.category.name if self.category_id else '')
 
 
 class Idea(models.Model):

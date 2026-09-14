@@ -426,6 +426,32 @@ class JazzClubModelTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertFalse(IdeaEntry.objects.filter(pk=item.id).exists())
 
+    def test_idea_toggle_moves_item_between_active_and_completed(self):
+        item = IdeaEntry.objects.create(household=self.household, kind='recipe', title='Traybake')
+        self.client.login(username='alex', password='secret123')
+
+        response = self.client.post(reverse('idea_toggle', kwargs={'kind': 'recipe', 'item_id': item.id}))
+        self.assertEqual(response.status_code, 302)
+        item.refresh_from_db()
+        self.assertTrue(item.completed)
+
+        response = self.client.get(reverse('idea_list', kwargs={'kind': 'recipe'}))
+        self.assertEqual([i.title for i in response.context['items']], [])
+        self.assertEqual([i.title for i in response.context['completed_items']], ['Traybake'])
+
+    def test_idea_row_color_is_deterministic_per_category(self):
+        category = Category.objects.create(household=self.household, kind='date', name='Outdoors')
+        item1 = IdeaEntry.objects.create(household=self.household, kind='date', title='Hike', category=category)
+        item2 = IdeaEntry.objects.create(household=self.household, kind='date', title='Picnic', category=category)
+        self.assertEqual(item1.row_color, item2.row_color)
+
+    def test_shopping_delete_respects_next_param(self):
+        item = ShoppingItem.objects.create(household=self.household, name='Milk', list_type='groceries')
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('shopping_delete', args=[item.id]), {'next': '/today/?view=shopping'})
+        self.assertRedirects(response, '/today/?view=shopping')
+        self.assertFalse(ShoppingItem.objects.filter(pk=item.id).exists())
+
     def test_category_create_update_and_delete(self):
         self.client.login(username='alex', password='secret123')
         response = self.client.post(reverse('category_create', kwargs={'kind': 'recipe'}), {'name': 'Wellness'})

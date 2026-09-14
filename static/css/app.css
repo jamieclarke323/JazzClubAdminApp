@@ -195,9 +195,6 @@ input::placeholder { color: var(--muted); }
 .info-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
 .info-text { margin:0; white-space: pre-wrap; flex: 1 1 auto; }
 .info-actions { display:flex; gap:6px; flex-shrink:0; }
-.shopping-list { list-style:none; padding:0; margin:14px 0 0; display:grid; gap:10px; }
-.shopping-row { display:flex; align-items:center; gap:10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
-.shopping-row.checked span { text-decoration: line-through; opacity: .7; }
 .icon-button { background: transparent; border:none; font-size: 1.2rem; color: var(--muted); }
 .shopping-manage-link { display: inline-block; margin-top: 14px; }
 
@@ -287,34 +284,40 @@ input::placeholder { color: var(--muted); }
 .today-page .task-row-actions { justify-content: center; width: 100%; }
 .today-page .owner-switch-panel { left: 50%; transform: translateX(-50%); }
 .today-page .owner-switch-form { justify-content: center; }
-.today-page .shopping-row { justify-content: center; }
 .today-page .shopping-form { justify-content: center; }
 
 /* The shopping view within the Today page stays left-aligned, unlike the centred to-do view */
 .today-page .shopping-view { text-align: left; }
-.today-page .shopping-view .shopping-row,
 .today-page .shopping-view .shopping-form { justify-content: flex-start; }
+.today-page .shopping-view .task-row { flex-direction: row; align-items: center; text-align: left; }
+.today-page .shopping-view .task-row-main { align-items: flex-start; }
+.today-page .shopping-view .task-row-line1 { justify-content: flex-start; }
+.today-page .shopping-view .task-row-actions { justify-content: flex-end; width: auto; }
 
-/* All other tasks: compact single-line spreadsheet-style rows inside the collapsed section */
-.thin-row { display:flex; align-items:center; gap:10px; padding: 4px 0; height: 32px; border-top: 1px solid var(--line); font-size: .82rem; color: var(--muted); }
-.thin-row:first-child { border-top: none; }
-.thin-title { flex: 1 1 auto; color: var(--ink); font-weight: 600; overflow:hidden; text-overflow: ellipsis; white-space: nowrap; }
-.thin-claim button {
-  width: 24px; height: 24px; border-radius: 6px; border: none; background: var(--accent); color: var(--accent-2);
-  cursor:pointer; font-size: .8rem; line-height: 1;
-}
+.checked-item .task-title { text-decoration: line-through; opacity: .7; }
 
 /* Idea list pages (important info, recipes, dates, restaurants, film/tv) */
 .idea-create-panel { margin-top: 14px; }
 .idea-create-panel .task-create-form textarea { min-height: 90px; }
 .idea-table-panel { overflow-x: auto; padding: 0; margin-top: 16px; }
-.idea-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.idea-table { width: 100%; border-collapse: separate; border-spacing: 0 6px; font-size: .88rem; }
 .idea-table th { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .idea-table th a { color: var(--muted); font-weight: 700; }
-.idea-table td { padding: 10px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.idea-table td { padding: 12px 16px; vertical-align: top; }
+.idea-table td:first-child { border-radius: 10px 0 0 10px; font-weight: 600; }
+.idea-table td:last-child { border-radius: 0 10px 10px 0; }
+.idea-table td:last-child form { display: inline-block; margin-right: 6px; }
 .idea-row { cursor: pointer; }
-.idea-row:hover { background: var(--panel-alt); }
-.idea-detail-row td { background: var(--panel-alt); color: var(--muted); white-space: pre-wrap; }
+.idea-row.color-wisteria { background: var(--tint-wisteria); }
+.idea-row.color-sage { background: var(--tint-sage); }
+.idea-row.color-sky { background: var(--tint-sky); }
+.idea-row.color-peach { background: var(--tint-peach); }
+.idea-row.color-butter { background: var(--tint-butter); }
+.idea-row.color-coral { background: var(--tint-coral); }
+.idea-row.color-slate { background: var(--tint-slate); }
+.idea-row.color-neutral { background: var(--tint-neutral); }
+.idea-row:hover td { filter: brightness(1.1); }
+.idea-detail-row td { background: var(--panel-alt); color: var(--muted); white-space: pre-wrap; border-radius: 10px; }
 .idea-detail-added { margin: 8px 0 0; font-size: .78rem; }
 .category-pill {
   display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px;
