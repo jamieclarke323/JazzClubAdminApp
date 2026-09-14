@@ -1,33 +1,35 @@
 {% comment %}
-Reusable category manager: add/rename/delete household categories.
-Expects: categories
+Reusable category manager: add/rename/delete categories scoped to this page's `kind`.
+Expects: categories, kind
 {% endcomment %}
-<details class="category-manager">
-  <summary class="secondary-button small">Manage categories</summary>
+<details class="category-manager" data-kind="{{ kind }}">
+  <summary>
+    <span class="category-manager-icon">☰</span>
+    <span class="category-manager-label">Manage categories</span>
+    <span class="category-manager-count" data-category-count>{{ categories|length }} categor{{ categories|length|pluralize:"y,ies" }}</span>
+    <span class="category-manager-chevron">›</span>
+  </summary>
   <div class="category-manager-panel">
-    <form method="post" action="{% url 'category_create' %}" class="shopping-form">
+    <form class="shopping-form category-create-form" data-category-form>
       {% csrf_token %}
-      <input type="hidden" name="next" value="{{ request.get_full_path }}">
       <input type="text" name="name" placeholder="New category" required>
       <button type="submit" class="primary-button small">Add</button>
     </form>
-    <ul class="category-manage-list">
+    <ul class="category-manage-list" data-category-list>
       {% for category in categories %}
-      <li class="category-manage-row">
-        <form method="post" action="{% url 'category_update' category.id %}">
+      <li class="category-manage-row" data-category-row data-category-id="{{ category.id }}">
+        <form class="category-rename-form" data-category-form data-category-id="{{ category.id }}">
           {% csrf_token %}
-          <input type="hidden" name="next" value="{{ request.get_full_path }}">
           <input type="text" name="name" value="{{ category.name }}">
           <button type="submit" class="ghost-button small">Save</button>
         </form>
-        <form method="post" action="{% url 'category_delete' category.id %}">
+        <form class="category-delete-form" data-category-form data-category-id="{{ category.id }}">
           {% csrf_token %}
-          <input type="hidden" name="next" value="{{ request.get_full_path }}">
           <button type="submit" class="icon-button" aria-label="Delete category">×</button>
         </form>
       </li>
       {% empty %}
-      <li class="muted">No categories yet.</li>
+      <li class="muted" data-category-empty>No categories yet.</li>
       {% endfor %}
     </ul>
   </div>

@@ -26,11 +26,11 @@ PRIORITY_ORDER = Case(
 UNDO_LIMIT = 6
 
 IDEA_KIND_META = {
-    'important_info': {'label': 'Important info', 'show_effort': False, 'show_recommended_by': False},
-    'recipe': {'label': 'Recipe ideas', 'show_effort': True, 'show_recommended_by': False},
-    'date': {'label': 'Date ideas', 'show_effort': False, 'show_recommended_by': False},
-    'restaurant': {'label': 'Restaurant reccs', 'show_effort': False, 'show_recommended_by': True},
-    'film_tv': {'label': 'Film/TV reccs', 'show_effort': False, 'show_recommended_by': True},
+    'important_info': {'label': 'Important info', 'icon': '📌', 'show_effort': False, 'show_recommended_by': False},
+    'recipe': {'label': 'Recipe ideas', 'icon': '🍳', 'show_effort': True, 'show_recommended_by': False},
+    'date': {'label': 'Date ideas', 'icon': '❤️', 'show_effort': False, 'show_recommended_by': False},
+    'restaurant': {'label': 'Restaurant reccs', 'icon': '🍴', 'show_effort': False, 'show_recommended_by': True},
+    'film_tv': {'label': 'Film/TV reccs', 'icon': '🎬', 'show_effort': False, 'show_recommended_by': True},
 }
 
 IDEA_SORT_FIELDS = {
@@ -86,12 +86,12 @@ def resolve_owner_choice(owner_choice, household):
     return None, 'unassigned'
 
 
-def resolve_category_choice(category_name, household):
-    """Category is optional; blank means no category, otherwise get-or-create it."""
+def resolve_category_choice(category_name, household, kind='task'):
+    """Category is optional; blank means no category, otherwise get-or-create it (scoped per kind)."""
     category_name = category_name.strip()
     if not category_name:
         return None
-    category, _ = Category.objects.get_or_create(household=household, name=category_name)
+    category, _ = Category.objects.get_or_create(household=household, kind=kind, name=category_name)
     return category
 
 
@@ -209,7 +209,7 @@ def admin_view(request):
     active_tasks = tasks.filter(completed=False).order_by('priority_rank', '-created_at')
     completed_tasks = tasks.filter(completed=True).order_by('-completed_at')
 
-    categories = Category.objects.filter(household=household)
+    categories = Category.objects.filter(household=household, kind='task')
     profiles = household.profiles.select_related('user') if household else UserProfile.objects.none()
 
     raw_open_subtasks = request.GET.get('open_subtasks')
@@ -267,11 +267,12 @@ def idea_list_view(request, kind):
     order_field = IDEA_SORT_FIELDS.get(sort_key, 'created_at')
     items = items.order_by(order_field if direction == 'asc' else f'-{order_field}')
 
-    categories = Category.objects.filter(household=household)
-    column_count = 4 + (1 if meta['show_effort'] else 0) + (1 if meta['show_recommended_by'] else 0)
+    categories = Category.objects.filter(household=household, kind=kind)
+    column_count = 3 + (1 if meta['show_effort'] else 0) + (1 if meta['show_recommended_by'] else 0)
 
     return render(request, 'household/idea_list.html', {
         'kind': kind,
+        'kind_icon': meta['icon'],
         'page_title': meta['label'],
         'show_effort': meta['show_effort'],
         'show_recommended_by': meta['show_recommended_by'],
@@ -298,7 +299,7 @@ def idea_create(request, kind):
         return redirect('idea_list', kind=kind)
 
     detail = request.POST.get('detail', '').strip()[:5000]
-    category = resolve_category_choice(request.POST.get('category_name', ''), household)
+    category = resolve_category_choice(request.POST.get('category_name', ''), household, kind=kind)
     effort = request.POST.get('effort', '')
     if effort not in dict(Task.EFFORT_CHOICES):
         effort = ''
@@ -327,34 +328,55 @@ def idea_delete(request, kind, item_id):
     return redirect('idea_list', kind=kind)
 
 
+def _is_ajax(request):
+    return request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+
 @login_required
 @require_POST
-def category_create(request):
+def category_create(request, kind):
+    if kind not in IDEA_KIND_META:
+        raise Http404
     household = get_household_for_user(request.user)
     name = request.POST.get('name', '').strip()
+    category = None
     if name:
-        Category.objects.get_or_create(household=household, name=name)
-    return redirect(request.POST.get('next') or 'settings')
+        category, _ = Category.objects.get_or_create(household=household, kind=kind, name=name)
+    if _is_ajax(request):
+        if category:
+            return JsonResponse({'success': True, 'id': category.id, 'name': category.name})
+        return JsonResponse({'success': False}, status=400)
+    return redirect(request.POST.get('next') or reverse('idea_list', kwargs={'kind': kind}))
 
 
 @login_required
 @require_POST
-def category_update(request, category_id):
+def category_update(request, kind, category_id):
+    if kind not in IDEA_KIND_META:
+        raise Http404
     household = get_household_for_user(request.user)
-    category = Category.objects.filter(pk=category_id, household=household).first()
+    category = Category.objects.filter(pk=category_id, household=household, kind=kind).first()
     name = request.POST.get('name', '').strip()
     if category and name:
         category.name = name
         category.save(update_fields=['name'])
-    return redirect(request.POST.get('next') or 'settings')
+    if _is_ajax(request):
+        if category and name:
+            return JsonResponse({'success': True, 'id': category.id, 'name': category.name})
+        return JsonResponse({'success': False}, status=400)
+    return redirect(request.POST.get('next') or reverse('idea_list', kwargs={'kind': kind}))
 
 
 @login_required
 @require_POST
-def category_delete(request, category_id):
+def category_delete(request, kind, category_id):
+    if kind not in IDEA_KIND_META:
+        raise Http404
     household = get_household_for_user(request.user)
-    Category.objects.filter(pk=category_id, household=household).delete()
-    return redirect(request.POST.get('next') or 'settings')
+    deleted, _ = Category.objects.filter(pk=category_id, household=household, kind=kind).delete()
+    if _is_ajax(request):
+        return JsonResponse({'success': bool(deleted)})
+    return redirect(request.POST.get('next') or reverse('idea_list', kwargs={'kind': kind}))
 
 
 @login_required

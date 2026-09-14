@@ -1,41 +1,44 @@
 {% extends 'base.html' %}
 {% block title %}{{ page_title }} | Jazz Club{% endblock %}
 {% block content %}
-<details class="idea-header-toggle">
-  <summary>
-    <p class="eyebrow">{{ page_title }}</p>
+<section class="page-header compact">
+  <div>
+    <p class="eyebrow">{{ kind_icon }} {{ page_title }}</p>
     <h1>{{ page_title }}</h1>
-  </summary>
-  <div class="task-create-panel idea-create-panel">
-    <form method="post" action="{% url 'idea_create' kind=kind %}" class="task-create-form">
-      {% csrf_token %}
-      <input type="text" name="title" maxlength="45" placeholder="Title (max 45 characters)" required>
-      <textarea name="detail" maxlength="5000" placeholder="Detail (optional, max 5000 characters)"></textarea>
-      <div class="field-row">
-        <span class="field-label">Category</span>
-        <input type="text" name="category_name" placeholder="Optional category" list="category-options-{{ kind }}">
-        <datalist id="category-options-{{ kind }}">
-          {% for category in categories %}<option value="{{ category.name }}">{% endfor %}
-        </datalist>
-      </div>
-      {% if show_effort %}
-      <div class="field-row">
-        <span class="field-label">Effort</span>
-        <div class="button-group">
-          {% for value, label in effort_choices %}
-          <input type="radio" id="effort-{{ value }}-{{ kind }}" name="effort" value="{{ value }}" class="visually-hidden" {% if value == 'medium' %}checked{% endif %}>
-          <label for="effort-{{ value }}-{{ kind }}">{{ label }}</label>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-      {% if show_recommended_by %}
-      <input type="text" name="recommended_by" placeholder="Recommended by (optional)">
-      {% endif %}
-      <button type="submit" class="primary-button">Add</button>
-    </form>
   </div>
-</details>
+  <details class="task-create-toggle">
+    <summary class="primary-button">+ Add</summary>
+    <div class="task-create-panel idea-create-panel">
+      <form method="post" action="{% url 'idea_create' kind=kind %}" class="task-create-form">
+        {% csrf_token %}
+        <input type="text" name="title" maxlength="45" placeholder="Title (max 45 characters)" required>
+        <textarea name="detail" maxlength="5000" placeholder="Detail (optional, max 5000 characters)"></textarea>
+        <div class="field-row">
+          <span class="field-label">Category</span>
+          <input type="text" name="category_name" placeholder="Optional category" list="category-options-{{ kind }}">
+          <datalist id="category-options-{{ kind }}">
+            {% for category in categories %}<option value="{{ category.name }}">{% endfor %}
+          </datalist>
+        </div>
+        {% if show_effort %}
+        <div class="field-row">
+          <span class="field-label">Effort</span>
+          <div class="button-group">
+            {% for value, label in effort_choices %}
+            <input type="radio" id="effort-{{ value }}-{{ kind }}" name="effort" value="{{ value }}" class="visually-hidden" {% if value == 'medium' %}checked{% endif %}>
+            <label for="effort-{{ value }}-{{ kind }}">{{ label }}</label>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        {% if show_recommended_by %}
+        <input type="text" name="recommended_by" placeholder="Recommended by (optional)">
+        {% endif %}
+        <button type="submit" class="primary-button">Add</button>
+      </form>
+    </div>
+  </details>
+</section>
 
 {% include 'household/_category_manager.html' %}
 
@@ -51,7 +54,6 @@
         {% if show_recommended_by %}
         <th><a href="?sort=recommended_by&amp;dir={% if current_sort == 'recommended_by' and current_dir == 'asc' %}desc{% else %}asc{% endif %}">Recommended by{% if current_sort == 'recommended_by' %} {% if current_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}</a></th>
         {% endif %}
-        <th><a href="?sort=created_at&amp;dir={% if current_sort == 'created_at' and current_dir == 'asc' %}desc{% else %}asc{% endif %}">Added{% if current_sort == 'created_at' %} {% if current_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}</a></th>
         <th></th>
       </tr>
     </thead>
@@ -59,14 +61,13 @@
       {% for item in items %}
       <tr class="idea-row" data-idea-toggle data-target="idea-detail-{{ item.id }}">
         <td>{{ item.title }}</td>
-        <td>{{ item.category.name|default:'—' }}</td>
+        <td>{% if item.category %}<span class="category-pill">{{ item.category.name }}</span>{% else %}—{% endif %}</td>
         {% if show_effort %}
         <td><span class="effort-dot effort-{{ item.effort|default:'medium' }}"></span> {{ item.get_effort_display|default:'—' }}</td>
         {% endif %}
         {% if show_recommended_by %}
         <td>{{ item.recommended_by|default:'—' }}</td>
         {% endif %}
-        <td>{{ item.created_at|date:'d M Y' }}</td>
         <td>
           <form method="post" action="{% url 'idea_delete' kind=kind item_id=item.id %}">
             {% csrf_token %}
@@ -75,10 +76,13 @@
         </td>
       </tr>
       <tr class="idea-detail-row" id="idea-detail-{{ item.id }}" hidden>
-        <td colspan="{{ column_count }}">{{ item.detail|default:'No further detail.'|linebreaksbr }}</td>
+        <td colspan="{{ column_count }}">
+          {{ item.detail|default:'No further detail.'|linebreaksbr }}
+          <p class="muted idea-detail-added">Added {{ item.created_at|date:'d M Y' }}</p>
+        </td>
       </tr>
       {% empty %}
-      <tr><td colspan="{{ column_count }}">No items yet. Click the title above to add one.</td></tr>
+      <tr><td colspan="{{ column_count }}">No items yet. Click "+ Add" above to add one.</td></tr>
       {% endfor %}
     </tbody>
   </table>

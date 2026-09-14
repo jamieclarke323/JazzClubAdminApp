@@ -98,3 +98,79 @@ document.addEventListener('click', function (event) {
   if (target) target.hidden = !target.hidden;
 });
 
+// Category manager: add/rename/delete without a full page reload.
+function escapeHtml(value) {
+  var div = document.createElement('div');
+  div.textContent = value;
+  return div.innerHTML;
+}
+
+document.addEventListener('submit', function (event) {
+  var form = event.target.closest('[data-category-form]');
+  if (!form) return;
+  event.preventDefault();
+
+  var manager = form.closest('.category-manager');
+  var kind = manager ? manager.getAttribute('data-kind') : '';
+  var list = manager ? manager.querySelector('[data-category-list]') : null;
+  var countEl = manager ? manager.querySelector('[data-category-count]') : null;
+  var categoryId = form.getAttribute('data-category-id');
+
+  var action;
+  if (form.classList.contains('category-create-form')) {
+    action = '/ideas/' + kind + '/categories/create/';
+  } else if (form.classList.contains('category-rename-form')) {
+    action = '/ideas/' + kind + '/categories/' + categoryId + '/update/';
+  } else {
+    action = '/ideas/' + kind + '/categories/' + categoryId + '/delete/';
+  }
+
+  fetch(action, {
+    method: 'POST',
+    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    body: new FormData(form),
+  })
+    .then(function (response) { return response.json(); })
+    .then(function (data) {
+      if (!data.success) return;
+
+      if (form.classList.contains('category-create-form')) {
+        var emptyRow = list.querySelector('[data-category-empty]');
+        if (emptyRow) emptyRow.remove();
+
+        var csrfToken = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
+        var li = document.createElement('li');
+        li.className = 'category-manage-row';
+        li.setAttribute('data-category-row', '');
+        li.setAttribute('data-category-id', data.id);
+        li.innerHTML =
+          '<form class="category-rename-form" data-category-form data-category-id="' + data.id + '">' +
+            '<input type="hidden" name="csrfmiddlewaretoken" value="' + escapeHtml(csrfToken) + '">' +
+            '<input type="text" name="name" value="' + escapeHtml(data.name) + '">' +
+            '<button type="submit" class="ghost-button small">Save</button>' +
+          '</form>' +
+          '<form class="category-delete-form" data-category-form data-category-id="' + data.id + '">' +
+            '<input type="hidden" name="csrfmiddlewaretoken" value="' + escapeHtml(csrfToken) + '">' +
+            '<button type="submit" class="icon-button" aria-label="Delete category">×</button>' +
+          '</form>';
+        list.appendChild(li);
+        form.reset();
+      } else if (form.classList.contains('category-delete-form')) {
+        var row = form.closest('[data-category-row]');
+        if (row) row.remove();
+        if (list && !list.querySelector('[data-category-row]')) {
+          var empty = document.createElement('li');
+          empty.className = 'muted';
+          empty.setAttribute('data-category-empty', '');
+          empty.textContent = 'No categories yet.';
+          list.appendChild(empty);
+        }
+      }
+
+      if (countEl && list) {
+        var count = list.querySelectorAll('[data-category-row]').length;
+        countEl.textContent = count + (count === 1 ? ' category' : ' categories');
+      }
+    });
+});
+

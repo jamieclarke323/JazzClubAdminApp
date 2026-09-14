@@ -45,12 +45,13 @@ class UserProfile(models.Model):
 
 class Category(models.Model):
     household = models.ForeignKey(Household, on_delete=models.CASCADE, related_name='categories')
+    kind = models.CharField(max_length=20, default='task')
     name = models.CharField(max_length=80)
     icon = models.CharField(max_length=20, blank=True)
 
     class Meta:
         ordering = ['name']
-        unique_together = ('household', 'name')
+        unique_together = ('household', 'kind', 'name')
 
     def __str__(self):
         return self.name

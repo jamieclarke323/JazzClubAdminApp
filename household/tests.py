@@ -428,18 +428,42 @@ class JazzClubModelTests(TestCase):
 
     def test_category_create_update_and_delete(self):
         self.client.login(username='alex', password='secret123')
-        response = self.client.post(reverse('category_create'), {'name': 'Wellness'})
+        response = self.client.post(reverse('category_create', kwargs={'kind': 'recipe'}), {'name': 'Wellness'})
         self.assertEqual(response.status_code, 302)
-        category = Category.objects.get(household=self.household, name='Wellness')
+        category = Category.objects.get(household=self.household, kind='recipe', name='Wellness')
 
-        response = self.client.post(reverse('category_update', args=[category.id]), {'name': 'Health & Wellness'})
+        response = self.client.post(reverse('category_update', kwargs={'kind': 'recipe', 'category_id': category.id}), {'name': 'Health & Wellness'})
         self.assertEqual(response.status_code, 302)
         category.refresh_from_db()
         self.assertEqual(category.name, 'Health & Wellness')
 
-        response = self.client.post(reverse('category_delete', args=[category.id]))
+        response = self.client.post(reverse('category_delete', kwargs={'kind': 'recipe', 'category_id': category.id}))
         self.assertEqual(response.status_code, 302)
         self.assertFalse(Category.objects.filter(pk=category.id).exists())
+
+    def test_category_create_returns_json_for_ajax_requests(self):
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(
+            reverse('category_create', kwargs={'kind': 'recipe'}),
+            {'name': 'Quick meals'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['success'], True)
+        self.assertEqual(response.json()['name'], 'Quick meals')
+
+    def test_categories_are_not_shared_across_idea_kinds(self):
+        Category.objects.create(household=self.household, kind='recipe', name='Quick')
+        Category.objects.create(household=self.household, kind='date', name='Quick')
+        self.client.login(username='alex', password='secret123')
+
+        response = self.client.get(reverse('idea_list', kwargs={'kind': 'recipe'}))
+        recipe_names = [c.name for c in response.context['categories']]
+        self.assertEqual(recipe_names, ['Quick'])
+
+        response = self.client.get(reverse('idea_list', kwargs={'kind': 'restaurant'}))
+        restaurant_names = [c.name for c in response.context['categories']]
+        self.assertEqual(restaurant_names, [])
 
     def test_today_page_shows_overdue_warning_badge(self):
         Task.objects.create(
