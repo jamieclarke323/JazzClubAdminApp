@@ -1,37 +1,16 @@
 {% extends 'base.html' %}
-{% block title %}More | Jazz Club{% endblock %}
+{% block title %}Settings | Jazz Club{% endblock %}
 {% block content %}
 <section class="page-header compact">
   <div>
-    <p class="eyebrow">More</p>
-    <h1>Shared life</h1>
+    <p class="eyebrow">Settings</p>
+    <h1>Your account</h1>
   </div>
 </section>
 
 <div class="stack">
   <section class="panel">
-    <h2>Us</h2>
-    <p>Shared date ideas and dinner ideas will appear here.</p>
-  </section>
-  <section class="panel">
-    <h2>Ideas</h2>
-    <p>Holiday, recipe, and inspiration ideas will appear here.</p>
-  </section>
-  <section class="panel">
-    <h2>Watch</h2>
-    <p>Film and TV picks will appear here.</p>
-  </section>
-  <section class="panel">
-    <h2>Calendar</h2>
-    <p>Google Calendar integration can be connected here.</p>
-  </section>
-  <section class="panel">
-    <h2>Important info</h2>
-    <p>Wifi passwords, allergy notes, and other free-text info to keep handy.</p>
-    <a href="{% url 'important_info' %}" class="secondary-button">Open important info</a>
-  </section>
-  <section class="panel">
-    <h2>Settings</h2>
+    <h2>Colour</h2>
     <div class="stack">
       {% for profile in profiles %}
         <div class="profile-row">

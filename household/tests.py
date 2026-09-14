@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from .models import Category, Household, ImportantInfo, ShoppingItem, Task, UserProfile
+from .models import Category, Household, IdeaEntry, ShoppingItem, Task, UserProfile
 
 User = get_user_model()
 
@@ -356,30 +356,109 @@ class JazzClubModelTests(TestCase):
         self.assertEqual(User.objects.filter(email='alex@example.com').count(), 1)
         self.assertContains(response, 'already exists')
 
-    def test_important_info_create_adds_entry_with_incrementing_order(self):
+    def test_important_info_create_shows_up_in_its_list(self):
         self.client.login(username='alex', password='secret123')
-        self.client.post(reverse('important_info_create'), {'text': 'Wifi: hunter2'})
-        self.client.post(reverse('important_info_create'), {'text': 'Bins out on Tuesdays'})
-        items = list(ImportantInfo.objects.filter(household=self.household).order_by('order'))
-        self.assertEqual([item.text for item in items], ['Wifi: hunter2', 'Bins out on Tuesdays'])
-        self.assertEqual([item.order for item in items], [0, 1])
-
-    def test_important_info_move_swaps_order_with_neighbour(self):
-        first = ImportantInfo.objects.create(household=self.household, text='First', order=0)
-        second = ImportantInfo.objects.create(household=self.household, text='Second', order=1)
-
-        self.client.login(username='alex', password='secret123')
-        response = self.client.post(reverse('important_info_move', args=[second.id]), {'direction': 'up'})
+        response = self.client.post(reverse('idea_create', kwargs={'kind': 'important_info'}), {
+            'title': 'Wifi password',
+            'detail': 'hunter2',
+            'category_name': 'Home',
+        })
         self.assertEqual(response.status_code, 302)
-        first.refresh_from_db()
-        second.refresh_from_db()
-        self.assertEqual(second.order, 0)
-        self.assertEqual(first.order, 1)
+        item = IdeaEntry.objects.get(household=self.household, kind='important_info')
+        self.assertEqual(item.title, 'Wifi password')
+        self.assertEqual(item.detail, 'hunter2')
+        self.assertEqual(item.category.name, 'Home')
+        self.assertEqual(item.effort, '')
 
-    def test_important_info_delete_removes_entry(self):
-        item = ImportantInfo.objects.create(household=self.household, text='Old note', order=0)
+        response = self.client.get(reverse('idea_list', kwargs={'kind': 'important_info'}))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Wifi password')
+
+    def test_idea_title_and_detail_are_truncated_to_max_length(self):
         self.client.login(username='alex', password='secret123')
-        response = self.client.post(reverse('important_info_delete', args=[item.id]))
+        response = self.client.post(reverse('idea_create', kwargs={'kind': 'important_info'}), {
+            'title': 'x' * 100,
+            'detail': 'y' * 6000,
+        })
         self.assertEqual(response.status_code, 302)
-        self.assertFalse(ImportantInfo.objects.filter(pk=item.id).exists())
+        item = IdeaEntry.objects.get(household=self.household, kind='important_info')
+        self.assertEqual(len(item.title), 45)
+        self.assertEqual(len(item.detail), 5000)
+
+    def test_recipe_idea_stores_effort(self):
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('idea_create', kwargs={'kind': 'recipe'}), {
+            'title': 'Traybake',
+            'effort': 'low',
+        })
+        self.assertEqual(response.status_code, 302)
+        item = IdeaEntry.objects.get(household=self.household, kind='recipe')
+        self.assertEqual(item.effort, 'low')
+
+    def test_restaurant_recc_recommended_by_is_optional(self):
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('idea_create', kwargs={'kind': 'restaurant'}), {'title': 'Noodle bar'})
+        self.assertEqual(response.status_code, 302)
+        item = IdeaEntry.objects.get(household=self.household, kind='restaurant')
+        self.assertEqual(item.recommended_by, '')
+
+        response = self.client.post(reverse('idea_create', kwargs={'kind': 'restaurant'}), {
+            'title': 'Pizza place',
+            'recommended_by': 'Sam',
+        })
+        self.assertEqual(response.status_code, 302)
+        item2 = IdeaEntry.objects.get(household=self.household, kind='restaurant', title='Pizza place')
+        self.assertEqual(item2.recommended_by, 'Sam')
+
+    def test_idea_list_can_be_sorted_by_title(self):
+        IdeaEntry.objects.create(household=self.household, kind='date', title='Zoo trip')
+        IdeaEntry.objects.create(household=self.household, kind='date', title='Aquarium')
+        self.client.login(username='alex', password='secret123')
+        response = self.client.get(reverse('idea_list', kwargs={'kind': 'date'}), {'sort': 'title', 'dir': 'asc'})
+        self.assertEqual(response.status_code, 200)
+        titles = [item.title for item in response.context['items']]
+        self.assertEqual(titles, ['Aquarium', 'Zoo trip'])
+
+    def test_idea_delete_removes_entry(self):
+        item = IdeaEntry.objects.create(household=self.household, kind='film_tv', title='Old film')
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('idea_delete', kwargs={'kind': 'film_tv', 'item_id': item.id}))
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(IdeaEntry.objects.filter(pk=item.id).exists())
+
+    def test_category_create_update_and_delete(self):
+        self.client.login(username='alex', password='secret123')
+        response = self.client.post(reverse('category_create'), {'name': 'Wellness'})
+        self.assertEqual(response.status_code, 302)
+        category = Category.objects.get(household=self.household, name='Wellness')
+
+        response = self.client.post(reverse('category_update', args=[category.id]), {'name': 'Health & Wellness'})
+        self.assertEqual(response.status_code, 302)
+        category.refresh_from_db()
+        self.assertEqual(category.name, 'Health & Wellness')
+
+        response = self.client.post(reverse('category_delete', args=[category.id]))
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Category.objects.filter(pk=category.id).exists())
+
+    def test_today_page_shows_overdue_warning_badge(self):
+        Task.objects.create(
+            household=self.household, title='Late task', owner=self.user1, owner_type='assigned',
+            due_date=date.today() - timedelta(days=1), category=self.category,
+        )
+        self.client.login(username='alex', password='secret123')
+        response = self.client.get(reverse('today'))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'overdue-badge')
+
+    def test_today_page_all_other_tasks_section_is_collapsed_by_default(self):
+        Task.objects.create(household=self.household, title='Someday task', category=self.category)
+        self.client.login(username='alex', password='secret123')
+        response = self.client.get(reverse('today'))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        section_start = content.index('All other tasks')
+        details_start = content.rindex('<details', 0, section_start)
+        details_tag = content[details_start:section_start]
+        self.assertNotIn('open', details_tag)
 

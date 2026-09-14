@@ -5,14 +5,14 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
 from django.db.models import Case, IntegerField, Q, Value, When
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import ShoppingForm, SignupForm
-from .models import Category, DateIdea, DinnerIdea, Household, ImportantInfo, ShoppingItem, SubTask, Task, UndoEntry, UserProfile
+from .models import Category, DateIdea, DinnerIdea, Household, IdeaEntry, ShoppingItem, SubTask, Task, UndoEntry, UserProfile
 
 User = get_user_model()
 
@@ -24,6 +24,22 @@ PRIORITY_ORDER = Case(
 )
 
 UNDO_LIMIT = 6
+
+IDEA_KIND_META = {
+    'important_info': {'label': 'Important info', 'show_effort': False, 'show_recommended_by': False},
+    'recipe': {'label': 'Recipe ideas', 'show_effort': True, 'show_recommended_by': False},
+    'date': {'label': 'Date ideas', 'show_effort': False, 'show_recommended_by': False},
+    'restaurant': {'label': 'Restaurant reccs', 'show_effort': False, 'show_recommended_by': True},
+    'film_tv': {'label': 'Film/TV reccs', 'show_effort': False, 'show_recommended_by': True},
+}
+
+IDEA_SORT_FIELDS = {
+    'title': 'title',
+    'category': 'category__name',
+    'effort': 'effort',
+    'recommended_by': 'recommended_by',
+    'created_at': 'created_at',
+}
 
 
 def get_household_for_user(user):
@@ -238,51 +254,107 @@ def settings_view(request):
 
 
 @login_required
-def important_info_view(request):
+def idea_list_view(request, kind):
+    meta = IDEA_KIND_META.get(kind)
+    if not meta:
+        raise Http404
+
     household = get_household_for_user(request.user)
-    items = ImportantInfo.objects.filter(household=household).order_by('order', 'created_at')
-    return render(request, 'household/important_info.html', {'items': items})
+    items = IdeaEntry.objects.filter(household=household, kind=kind).select_related('category')
+
+    sort_key = request.GET.get('sort', 'created_at')
+    direction = request.GET.get('dir', 'desc' if sort_key == 'created_at' else 'asc')
+    order_field = IDEA_SORT_FIELDS.get(sort_key, 'created_at')
+    items = items.order_by(order_field if direction == 'asc' else f'-{order_field}')
+
+    categories = Category.objects.filter(household=household)
+    column_count = 4 + (1 if meta['show_effort'] else 0) + (1 if meta['show_recommended_by'] else 0)
+
+    return render(request, 'household/idea_list.html', {
+        'kind': kind,
+        'page_title': meta['label'],
+        'show_effort': meta['show_effort'],
+        'show_recommended_by': meta['show_recommended_by'],
+        'items': items,
+        'categories': categories,
+        'current_sort': sort_key,
+        'current_dir': direction,
+        'effort_choices': Task.EFFORT_CHOICES,
+        'column_count': column_count,
+    })
 
 
 @login_required
 @require_POST
-def important_info_create(request):
+def idea_create(request, kind):
+    meta = IDEA_KIND_META.get(kind)
+    if not meta:
+        raise Http404
+
     household = get_household_for_user(request.user)
-    text = request.POST.get('text', '').strip()
-    if text:
-        next_order = ImportantInfo.objects.filter(household=household).count()
-        ImportantInfo.objects.create(household=household, text=text, order=next_order)
-    return redirect('important_info')
+    title = request.POST.get('title', '').strip()[:45]
+    if not title:
+        messages.error(request, 'Please add a title.')
+        return redirect('idea_list', kind=kind)
+
+    detail = request.POST.get('detail', '').strip()[:5000]
+    category = resolve_category_choice(request.POST.get('category_name', ''), household)
+    effort = request.POST.get('effort', '')
+    if effort not in dict(Task.EFFORT_CHOICES):
+        effort = ''
+    recommended_by = request.POST.get('recommended_by', '').strip()
+
+    item = IdeaEntry.objects.create(
+        household=household,
+        kind=kind,
+        title=title,
+        detail=detail,
+        category=category,
+        effort=effort if meta['show_effort'] else '',
+        recommended_by=recommended_by if meta['show_recommended_by'] else '',
+    )
+    log_undo(household, 'IdeaEntry', 'create', f"Added '{item.title}'", object_id=item.id)
+    return redirect('idea_list', kind=kind)
 
 
 @login_required
 @require_POST
-def important_info_delete(request, info_id):
+def idea_delete(request, kind, item_id):
+    if kind not in IDEA_KIND_META:
+        raise Http404
     household = get_household_for_user(request.user)
-    ImportantInfo.objects.filter(pk=info_id, household=household).delete()
-    return redirect('important_info')
+    IdeaEntry.objects.filter(pk=item_id, household=household, kind=kind).delete()
+    return redirect('idea_list', kind=kind)
 
 
 @login_required
 @require_POST
-def important_info_move(request, info_id):
+def category_create(request):
     household = get_household_for_user(request.user)
-    items = list(ImportantInfo.objects.filter(household=household).order_by('order', 'created_at'))
-    ids = [item.id for item in items]
-    if info_id not in ids:
-        return redirect('important_info')
+    name = request.POST.get('name', '').strip()
+    if name:
+        Category.objects.get_or_create(household=household, name=name)
+    return redirect(request.POST.get('next') or 'settings')
 
-    index = ids.index(info_id)
-    direction = request.POST.get('direction')
-    swap_index = index - 1 if direction == 'up' else index + 1 if direction == 'down' else None
 
-    if swap_index is not None and 0 <= swap_index < len(items):
-        current, other = items[index], items[swap_index]
-        current.order, other.order = other.order, current.order
-        current.save(update_fields=['order'])
-        other.save(update_fields=['order'])
+@login_required
+@require_POST
+def category_update(request, category_id):
+    household = get_household_for_user(request.user)
+    category = Category.objects.filter(pk=category_id, household=household).first()
+    name = request.POST.get('name', '').strip()
+    if category and name:
+        category.name = name
+        category.save(update_fields=['name'])
+    return redirect(request.POST.get('next') or 'settings')
 
-    return redirect('important_info')
+
+@login_required
+@require_POST
+def category_delete(request, category_id):
+    household = get_household_for_user(request.user)
+    Category.objects.filter(pk=category_id, household=household).delete()
+    return redirect(request.POST.get('next') or 'settings')
 
 
 @login_required
@@ -573,6 +645,9 @@ def undo_action(request):
                 item.save()
         elif entry.action == 'delete':
             ShoppingItem.objects.create(household=household, **entry.snapshot)
+    elif entry.model_name == 'IdeaEntry':
+        if entry.action == 'create':
+            IdeaEntry.objects.filter(pk=entry.object_id, household=household).delete()
     elif entry.model_name == 'UserProfile':
         profile = UserProfile.objects.filter(pk=entry.object_id, household=household).first()
         if profile:

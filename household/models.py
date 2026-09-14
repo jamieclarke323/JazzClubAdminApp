@@ -379,17 +379,30 @@ class UndoEntry(models.Model):
         return self.description
 
 
-class ImportantInfo(models.Model):
-    household = models.ForeignKey(Household, on_delete=models.CASCADE, related_name='important_info')
-    text = models.TextField()
-    order = models.PositiveIntegerField(default=0)
+class IdeaEntry(models.Model):
+    KIND_CHOICES = [
+        ('important_info', 'Important info'),
+        ('recipe', 'Recipe idea'),
+        ('date', 'Date idea'),
+        ('restaurant', 'Restaurant recommendation'),
+        ('film_tv', 'Film/TV recommendation'),
+    ]
+
+    household = models.ForeignKey(Household, on_delete=models.CASCADE, related_name='idea_entries')
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES)
+    title = models.CharField(max_length=45)
+    detail = models.TextField(max_length=5000, blank=True)
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True, related_name='idea_entries')
+    effort = models.CharField(max_length=20, choices=Task.EFFORT_CHOICES, blank=True)
+    recommended_by = models.CharField(max_length=120, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ['order', 'created_at']
+        ordering = ['-created_at']
+        verbose_name_plural = 'idea entries'
 
     def __str__(self):
-        return self.text[:50]
+        return self.title
 
 
 class Idea(models.Model):

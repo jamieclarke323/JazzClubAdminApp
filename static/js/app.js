@@ -89,3 +89,12 @@ document.addEventListener('click', function (event) {
   }
 });
 
+// Idea list pages: clicking a row (but not its delete button) toggles the full-detail row below it.
+document.addEventListener('click', function (event) {
+  if (event.target.closest('form') || event.target.closest('a')) return;
+  var row = event.target.closest('[data-idea-toggle]');
+  if (!row) return;
+  var target = document.getElementById(row.getAttribute('data-target'));
+  if (target) target.hidden = !target.hidden;
+});
+

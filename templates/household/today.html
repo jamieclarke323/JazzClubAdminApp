@@ -75,13 +75,13 @@
     {% if today_tasks %}
     <div class="stack task-rows">
       {% for task in today_tasks %}
-      <div class="task-row color-{{ task.owner_color }}" data-owner-switch>
-        <span class="effort-dot {{ task.effort_theme }}" title="{{ task.effort }} effort"></span>
+      <div class="task-row color-{{ task.owner_color }}{% if task.due_date < today %} overdue{% endif %}" data-owner-switch>
+        <span class="effort-dot effort-{{ task.effort }}" title="{{ task.effort }} effort"></span>
         <div class="task-row-main" data-owner-trigger title="Click to change owner">
           <div class="task-row-line1">
             <span class="task-title">{{ task.title }}</span>
             <span class="badge priority-{{ task.priority }}">{{ task.priority }}</span>
-            {% if task.due_date < today %}<span class="badge">Overdue</span>{% endif %}
+            {% if task.due_date < today %}<span class="badge overdue-badge">⚠ Overdue</span>{% endif %}
           </div>
           <div class="task-row-line2">
             <span class="owner-chip color-{{ task.owner_color }}"><span class="owner-dot"></span>{{ task.owner_label }}</span>
@@ -112,39 +112,28 @@
     {% endif %}
   </section>
 
-
-  <section class="panel">
-    <h2>All other tasks</h2>
-    {% if other_tasks %}
-    <div class="stack task-rows">
+  <details class="completed-section">
+    <summary>All other tasks ({{ other_tasks|length }})</summary>
+    <div class="completed-list">
       {% for task in other_tasks %}
-      <div class="task-row color-{{ task.owner_color }}">
-        <span class="effort-dot {{ task.effort_theme }}" title="{{ task.effort }} effort"></span>
-        <div class="task-row-main">
-          <div class="task-row-line1">
-            <span class="task-title">{{ task.title }}</span>
-            <span class="badge priority-{{ task.priority }}">{{ task.priority }}</span>
-          </div>
-          <div class="task-row-line2">
-            <span class="owner-chip color-{{ task.owner_color }}"><span class="owner-dot"></span>{{ task.owner_label }}</span>
-            {% if task.category %}<span class="task-tag">{{ task.category.name }}</span>{% endif %}
-          </div>
-        </div>
-        <div class="task-row-actions">
-          <form method="post" action="{% url 'task_claim' task.id %}">
-            {% csrf_token %}
-            <input type="hidden" name="for_today" value="1">
-            <input type="hidden" name="next" value="{% url 'today' %}?view=todo">
-            <button type="submit" class="primary-button small">Claim for today</button>
-          </form>
-        </div>
+      <div class="thin-row">
+        <span class="effort-dot effort-{{ task.effort }}" title="{{ task.effort }} effort"></span>
+        <span class="thin-title">{{ task.title }}</span>
+        <span class="owner-chip color-{{ task.owner_color }}"><span class="owner-dot"></span>{{ task.owner_label }}</span>
+        <span class="badge priority-{{ task.priority }}">{{ task.priority }}</span>
+        {% if task.category %}<span class="task-tag">{{ task.category.name }}</span>{% endif %}
+        <form method="post" action="{% url 'task_claim' task.id %}" class="thin-claim">
+          {% csrf_token %}
+          <input type="hidden" name="for_today" value="1">
+          <input type="hidden" name="next" value="{% url 'today' %}?view=todo">
+          <button type="submit" aria-label="Claim for today">→</button>
+        </form>
       </div>
+      {% empty %}
+      <p>Nothing else to claim right now.</p>
       {% endfor %}
     </div>
-    {% else %}
-      <p>Nothing else to claim right now.</p>
-    {% endif %}
-  </section>
+  </details>
 
   {% if dinner_idea %}
   <section class="panel">
@@ -173,7 +162,7 @@
         <span class="completed-title">{{ task.title }}</span>
         <span class="owner-chip color-{{ task.owner_color }}"><span class="owner-dot"></span>{{ task.owner_label }}</span>
         <span class="badge priority-{{ task.priority }}">{{ task.priority }}</span>
-        <span class="effort-dot {{ task.effort_theme }}"></span>
+        <span class="effort-dot effort-{{ task.effort }}"></span>
         <span class="completed-date">{{ task.completed_at|date:'d M' }}</span>
       </div>
       {% endfor %}

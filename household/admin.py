@@ -8,6 +8,7 @@ from .models import (
     Household,
     HolidayIdea,
     Idea,
+    IdeaEntry,
     MealPlan,
     NotificationPreference,
     ShoppingItem,
@@ -31,3 +32,4 @@ admin.site.register(WatchItem)
 admin.site.register(NotificationPreference)
 admin.site.register(CalendarIntegration)
 admin.site.register(Idea)
+admin.site.register(IdeaEntry)

@@ -34,7 +34,12 @@
         <a href="{% url 'today' %}" class="nav-link">Today</a>
         <a href="{% url 'tasks' %}" class="nav-link">Admin</a>
         <a href="{% url 'shopping' %}" class="nav-link">Shopping</a>
-        <a href="{% url 'settings' %}" class="nav-link">More</a>
+        <a href="{% url 'idea_list' kind='important_info' %}" class="nav-link">Important info</a>
+        <a href="{% url 'idea_list' kind='recipe' %}" class="nav-link">Recipe ideas</a>
+        <a href="{% url 'idea_list' kind='date' %}" class="nav-link">Date ideas</a>
+        <a href="{% url 'idea_list' kind='restaurant' %}" class="nav-link">Restaurant reccs</a>
+        <a href="{% url 'idea_list' kind='film_tv' %}" class="nav-link">Film/TV reccs</a>
+        <a href="{% url 'settings' %}" class="nav-link">Settings</a>
       </nav>
       <div class="sidebar-footer">
         {% if undo_count %}
